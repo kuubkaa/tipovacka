@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Trophy } from "lucide-react";
 
+import { auth, signOut } from "@/auth";
 import { buttonVariants } from "@/components/ui/button";
 import { tournament, isDeadlinePassed } from "@/config/tournament";
 
@@ -12,8 +13,9 @@ const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   minute: "2-digit",
 });
 
-export default function Home() {
+export default async function Home() {
   const deadlinePassed = isDeadlinePassed();
+  const session = await auth();
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 text-white">
@@ -26,7 +28,40 @@ export default function Home() {
         }}
       />
 
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+      <header className="relative z-10 flex items-center justify-end px-6 py-4 text-sm">
+        {session?.user ? (
+          <div className="flex items-center gap-3 text-white/80">
+            <span className="hidden sm:inline">
+              Přihlášen jako{" "}
+              <strong className="text-white">
+                {session.user.name ?? session.user.email}
+              </strong>
+            </span>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/" });
+              }}
+            >
+              <button
+                type="submit"
+                className="rounded-full px-3 py-1.5 text-xs font-medium text-white/70 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
+              >
+                Odhlásit
+              </button>
+            </form>
+          </div>
+        ) : (
+          <Link
+            href="/prihlaseni"
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-white/70 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
+          >
+            Přihlásit se
+          </Link>
+        )}
+      </header>
+
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
         <div className="mb-8 inline-flex items-center justify-center rounded-full bg-white/10 p-5 text-white shadow-lg backdrop-blur-sm ring-1 ring-white/20">
           {/* Logo se bere z /public/logo.svg (viz tournament.config) */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
