@@ -20,8 +20,8 @@
 - **Framework:** Next.js 16 (App Router) + TypeScript + React 19 + Turbopack
 - **UI:** Tailwind CSS v4 + shadcn/ui (base-ui primitives) + lucide-react ikony
 - **Font:** Geist Sans / Geist Mono
-- **Databáze:** Vercel Postgres (Neon) — **plánováno, ještě nenasazeno**
-- **ORM:** Prisma — **plánováno, ještě nenasazeno**
+- **Databáze:** Vercel Postgres (Neon) — ✅ nasazená (region eu-central-1, free tier)
+- **ORM:** Prisma 7 + `@prisma/adapter-pg` (driver adapter, ne Rust engine)
 - **Auth:** Magic link přes email (Auth.js / NextAuth v5) — **plánováno**
 - **Hosting:** Vercel
 - **Kontejnerizace:** Žádná. Pracujeme přímo na hostu (`npm run dev`).
@@ -32,7 +32,14 @@
 - NIKDY needituj `.env` — používej pouze `.env.local`
 - Spouštění: `npm run dev` (dev), `npm run build` (produkční build), `npm run lint`
 - Po každé instalaci balíčku: `npm install <balíček>` (restart dev serveru ručně)
-- Po změně Prisma schema (až bude): `npx prisma generate` + `npx prisma migrate dev`
+- **DB scripts** (všechny čtou `.env.local` přes `dotenv-cli`):
+  - `npm run db:migrate -- --name <jmeno>` — vytvoří + aplikuje novou migraci (dev)
+  - `npm run db:deploy` — aplikuje hotové migrace (CI / produkce)
+  - `npm run db:studio` — otevře Prisma Studio (web UI nad DB)
+  - `npm run db:push` — sync schématu bez migrace (jen pro rychlé prototypování)
+  - `npm run db:generate` — regeneruje Prisma klienta
+- **Env vars pro DB** (Vercel/Neon je nastavuje automaticky): `DATABASE_URL` (pooled, runtime), `DATABASE_URL_UNPOOLED` (direct, migrace)
+- **Refresh env vars z Vercelu** (po změně na Vercelu): `npx vercel env pull .env.local`
 
 ### Git a commity
 - Před každým commitem a pushem se zeptej uživatele na potvrzení
@@ -105,12 +112,13 @@ Pokud `NODE_ENV=production`:
 ```
 
 ## Plán dalších iterací
-1. **Auth (magic link)** — login přes email, session
-2. **DB + Prisma schema** — Vercel Postgres, modely `User`, `Match`, `Tip`, `SpecialTip`
-3. **Tipovací formulář** — zápasy ze základní skupiny + speciální tipy (král střelců, vítěz)
-4. **Admin rozhraní** — zadávání reálných výsledků
-5. **Bodování + leaderboard** — automatický výpočet po zadání výsledku
-6. **Vyřazovací pavouk** — odemkne se po skončení skupin (dynamicky podle postupů)
+1. ✅ ~~DB + Prisma schema~~ — hotovo (2026-05-17)
+2. **Auth (magic link)** — login přes email (Auth.js v5 + Resend), Account/Session/VerificationToken tabulky
+3. **Seed týmů a zápasů MS 2026** — 48 týmů, 12 skupin, fixture rozpis
+4. **Tipovací formulář** — zápasy ze základní skupiny + speciální tipy (král střelců, vítěz)
+5. **Admin rozhraní** — zadávání reálných výsledků
+6. **Bodování + leaderboard** — automatický výpočet po zadání výsledku
+7. **Vyřazovací pavouk** — odemkne se po skončení skupin (dynamicky podle postupů)
 
 ## Nuance projektu
 - Tipy se počítají podle blízkosti k reálnému výsledku (přesný výsledek > správný vítěz a rozdíl > jen správný vítěz).
@@ -120,6 +128,8 @@ Pokud `NODE_ENV=production`:
 ## Rozhodnutí
 - **2026-05-17:** Stack zvolen Next.js + Vercel Postgres + Prisma + Magic link auth. Bez Dockeru — celé běží nativně, Vercel ho stejně nepoužívá.
 - **2026-05-17:** Reusabilita řešena přes `src/config/tournament.ts` (jeden soubor = jedna pravda o brandingu).
+- **2026-05-17:** Prisma 7 — connection string je v `prisma.config.ts` (ne v schema.prisma) + runtime jde přes `@prisma/adapter-pg` (driver adapter). Důvod: Prisma 7 odstranila `url` z datasource bloku a oddělila migrace od runtime.
+- **2026-05-17:** Neon DB bez Neon Auth — chceme vlastní Auth.js, ne vendor-lock-in. Lze kdykoliv zapnout, pokud bychom změnili názor.
 
 ## Údržba tohoto souboru
 - Aktualizuj po každé strukturální změně, novém pravidlu nebo rozhodnutí
