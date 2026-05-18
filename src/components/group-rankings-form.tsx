@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, useTransition } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import {
@@ -50,24 +50,34 @@ export function GroupRankingsForm({
   groups: GroupRankingData[];
   disabled: boolean;
 }) {
-  // Controlled state — proč: React 19 + server actions resetují/nerefreshují
-  // `defaultValue` po submit, takže uncontrolled selecty by se po uložení
-  // zobrazovaly prázdné. Drží to v useState.
+  // Controlled state. Voláme server action manuálně přes useTransition,
+  // ne přes <form action={...}> + useActionState — to v React 19 dělá
+  // restart client subtree (useState picks by se přemazal po každém save).
   const [picks, setPicks] = useState<Record<string, string>>(() =>
     initialPicks(groups)
   );
-
-  const [state, formAction, pending] = useActionState<
-    SaveGroupRankingsResult | null,
-    FormData
-  >(saveGroupRankingsAction, null);
+  const [state, setState] = useState<SaveGroupRankingsResult | null>(null);
+  const [pending, startTransition] = useTransition();
 
   function update(key: string, value: string) {
     setPicks((p) => ({ ...p, [key]: value }));
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (disabled || pending) return;
+    const formData = new FormData();
+    for (const [k, v] of Object.entries(picks)) {
+      formData.append(k, v);
+    }
+    startTransition(async () => {
+      const result = await saveGroupRankingsAction(null, formData);
+      setState(result);
+    });
+  }
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {groups.map((g) => (
           <GroupCard

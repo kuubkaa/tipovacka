@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState, useTransition } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import { saveTipsAction, type SaveTipsResult } from "@/app/formular/actions";
@@ -59,23 +59,34 @@ export function TipsForm({
   groups: GroupData[];
   disabled: boolean;
 }) {
-  // Controlled state — viz GroupRankingsForm. Bez tohoto by React po
-  // server-action submit vyresetoval inputy a uložené tipy by zmizely z UI.
+  // Controlled state + manuální submit přes useTransition.
+  // Viz GroupRankingsForm — useActionState + revalidatePath dělá v React 19
+  // restart client komponenty a useState by se po každém save přemazal.
   const [scores, setScores] = useState<Record<string, string>>(() =>
     initialScores(groups)
   );
-
-  const [state, formAction, pending] = useActionState<
-    SaveTipsResult | null,
-    FormData
-  >(saveTipsAction, null);
+  const [state, setState] = useState<SaveTipsResult | null>(null);
+  const [pending, startTransition] = useTransition();
 
   function update(key: string, value: string) {
     setScores((s) => ({ ...s, [key]: value }));
   }
 
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (disabled || pending) return;
+    const formData = new FormData();
+    for (const [k, v] of Object.entries(scores)) {
+      formData.append(k, v);
+    }
+    startTransition(async () => {
+      const result = await saveTipsAction(null, formData);
+      setState(result);
+    });
+  }
+
   return (
-    <form action={formAction} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-8">
       {groups.map((g) => (
         <section
           key={g.group}

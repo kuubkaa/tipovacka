@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { auth } from "@/auth";
 import { isDeadlinePassed } from "@/config/tournament";
 import { db } from "@/lib/db";
@@ -104,7 +102,9 @@ export async function saveTipsAction(
     saved++;
   }
 
-  revalidatePath("/formular");
+  // Klient drží user-picked hodnoty v useState a po úspěšném save je
+  // přemaže tím, co server potvrdil. Revalidaci stránky řešíme až při
+  // přechodu jinam (uživatel může F5 udělat sám pro hard sync).
   return { status: "ok", saved };
 }
 
@@ -193,6 +193,8 @@ export async function saveGroupRankingsAction(
     saved++;
   }
 
-  revalidatePath("/formular");
+  // Klient drží user-picked hodnoty v useState a po úspěšném save je
+  // přemaže tím, co server potvrdil. Revalidaci stránky řešíme až při
+  // přechodu jinam (uživatel může F5 udělat sám pro hard sync).
   return { status: "ok", saved, skipped };
 }
