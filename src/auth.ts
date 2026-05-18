@@ -12,6 +12,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(db),
   // Email magic-link nutně potřebuje databázové sessions (ne JWT).
   session: { strategy: "database" },
+  callbacks: {
+    // Auth.js defaultně neukládá user.id na session — přidáme ho ručně,
+    // ať můžeme ve server komponentách a actions snadno dotahovat data k uživateli.
+    session({ session, user }) {
+      session.user.id = user.id;
+      session.user.isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
+      return session;
+    },
+  },
   providers: [
     Resend({
       // Defaultní Resend sender pro testy (bez ověřené domény).
