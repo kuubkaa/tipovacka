@@ -204,10 +204,27 @@ export async function saveGroupRankingsAction(
 // =============================================================================
 
 export type SaveSpecialTipsResult =
-  | { status: "ok"; saved: number; deleted: number }
+  | {
+      status: "ok";
+      saved: number;
+      deleted: number;
+      advancersSaved: number;
+      advancersDeleted: number;
+    }
   | { status: "deadline" }
   | { status: "unauth" }
   | { status: "error"; message: string };
+
+/// Vyřazovací kola, na která bere tipy "postupující": klíč v form data,
+/// odpovídající `Stage` enum value, a počet týmů které do daného kola
+/// postupují (jen pro UI counter — v DB neexistuje hard constraint).
+export const KNOCKOUT_ADVANCERS_ROUNDS = [
+  { key: "R32", stage: "ROUND_OF_32" as const, targetCount: 32, label: "Šestnáctifinále" },
+  { key: "R16", stage: "ROUND_OF_16" as const, targetCount: 16, label: "Osmifinále" },
+  { key: "QF", stage: "QUARTER_FINAL" as const, targetCount: 8, label: "Čtvrtfinále" },
+  { key: "SF", stage: "SEMI_FINAL" as const, targetCount: 4, label: "Semifinále" },
+  { key: "F", stage: "FINAL" as const, targetCount: 2, label: "Finále" },
+] as const;
 
 const SPECIAL_TIP_TYPES = [
   "TOURNAMENT_WINNER",
@@ -250,7 +267,6 @@ export async function saveSpecialTipsAction(
     const value = typeof raw === "string" ? raw.trim() : "";
 
     if (value === "") {
-      // Prázdná hodnota — smaž existující tip (pokud je)
       const res = await db.specialTip.deleteMany({
         where: { userId, type },
       });
@@ -258,14 +274,9 @@ export async function saveSpecialTipsAction(
       continue;
     }
 
-    // Validace
     if (type === "TOURNAMENT_WINNER") {
-      if (!validTeamCodes.has(value)) {
-        // Neznámý kód — ignoruj
-        continue;
-      }
+      if (!validTeamCodes.has(value)) continue;
     } else {
-      // Player name — jen omezíme délku
       if (value.length > PLAYER_NAME_MAX) continue;
     }
 
@@ -277,5 +288,37 @@ export async function saveSpecialTipsAction(
     saved++;
   }
 
-  return { status: "ok", saved, deleted };
+  // --- Postupující do vyřazovacích kol ---
+  let advancersSaved = 0;
+  let advancersDeleted = 0;
+
+  for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+    const raw = formData.getAll(`advancers_${round.key}`);
+    // Vyfiltruj jen validní (existující) team codes a deduplikuj
+    const codes = Array.from(
+      new Set(
+        raw
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v !== "" && validTeamCodes.has(v))
+      )
+    );
+
+    if (codes.length === 0) {
+      const res = await db.knockoutAdvancersTip.deleteMany({
+        where: { userId, stage: round.stage },
+      });
+      advancersDeleted += res.count;
+      continue;
+    }
+
+    await db.knockoutAdvancersTip.upsert({
+      where: { userId_stage: { userId, stage: round.stage } },
+      create: { userId, stage: round.stage, teamCodes: codes },
+      update: { teamCodes: codes },
+    });
+    advancersSaved++;
+  }
+
+  return { status: "ok", saved, deleted, advancersSaved, advancersDeleted };
 }

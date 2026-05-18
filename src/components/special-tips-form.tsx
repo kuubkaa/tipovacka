@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Check, Loader2, Trophy } from "lucide-react";
 
 import {
+  KNOCKOUT_ADVANCERS_ROUNDS,
   saveSpecialTipsAction,
   type SaveSpecialTipsResult,
 } from "@/app/formular/actions";
@@ -21,10 +22,11 @@ interface TeamRef {
 }
 
 export interface SpecialTipsData {
-  /// Týmy seskupené po skupinách (pro select vítěze turnaje s optgroup).
   teams: TeamRef[];
-  /// Existující tipy uživatele, map type → value
+  /// Existující speciální tipy (winner + scorers): type → value
   existing: Record<string, string>;
+  /// Existující postupující: round key (R32/R16/QF/SF/F) → seznam team kódů
+  existingAdvancers: Record<string, string[]>;
 }
 
 const GROUP_LETTERS = [
@@ -44,6 +46,16 @@ function initialValues(data: SpecialTipsData): Record<string, string> {
   return init;
 }
 
+function initialAdvancers(
+  data: SpecialTipsData
+): Record<string, Set<string>> {
+  const init: Record<string, Set<string>> = {};
+  for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+    init[round.key] = new Set(data.existingAdvancers[round.key] ?? []);
+  }
+  return init;
+}
+
 export function SpecialTipsForm({
   data,
   disabled,
@@ -54,11 +66,23 @@ export function SpecialTipsForm({
   const [values, setValues] = useState<Record<string, string>>(() =>
     initialValues(data)
   );
+  const [advancers, setAdvancers] = useState<Record<string, Set<string>>>(
+    () => initialAdvancers(data)
+  );
   const [state, setState] = useState<SaveSpecialTipsResult | null>(null);
   const [pending, startTransition] = useTransition();
 
   function update(key: string, value: string) {
     setValues((v) => ({ ...v, [key]: value }));
+  }
+
+  function toggleAdvancer(roundKey: string, code: string) {
+    setAdvancers((prev) => {
+      const set = new Set(prev[roundKey] ?? []);
+      if (set.has(code)) set.delete(code);
+      else set.add(code);
+      return { ...prev, [roundKey]: set };
+    });
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -68,13 +92,19 @@ export function SpecialTipsForm({
     for (const [k, v] of Object.entries(values)) {
       formData.append(k, v);
     }
+    for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+      const set = advancers[round.key] ?? new Set();
+      for (const code of set) {
+        formData.append(`advancers_${round.key}`, code);
+      }
+    }
     startTransition(async () => {
       const result = await saveSpecialTipsAction(null, formData);
       setState(result);
     });
   }
 
-  // Seskupit týmy pro optgroup
+  // Seskupit týmy po skupinách
   const teamsByGroup = new Map<string, TeamRef[]>();
   for (const t of data.teams) {
     const list = teamsByGroup.get(t.group) ?? [];
@@ -87,6 +117,72 @@ export function SpecialTipsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Postupující do vyřazovacích kol */}
+      {KNOCKOUT_ADVANCERS_ROUNDS.map((round) => {
+        const selectedSet = advancers[round.key] ?? new Set<string>();
+        const selectedCount = selectedSet.size;
+        return (
+          <section
+            key={round.key}
+            className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+          >
+            <header className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <h2 className="text-sm font-semibold tracking-wide text-slate-700">
+                Postupující do {round.label}
+              </h2>
+              <span
+                className={cn(
+                  "text-xs font-medium tabular-nums",
+                  selectedCount === round.targetCount
+                    ? "text-emerald-700"
+                    : "text-slate-500"
+                )}
+              >
+                Vybráno: {selectedCount} / {round.targetCount}
+              </span>
+            </header>
+            <div className="space-y-3 p-4">
+              {orderedGroups.map(([group, ts]) => (
+                <div key={group}>
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Skupina {group}
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                    {ts.map((t) => {
+                      const selected = selectedSet.has(t.code);
+                      return (
+                        <label
+                          key={t.code}
+                          className={cn(
+                            "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-slate-900 bg-slate-900 text-white"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-400",
+                            disabled && "cursor-not-allowed opacity-60"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={selected}
+                            onChange={() => toggleAdvancer(round.key, t.code)}
+                            disabled={disabled}
+                          />
+                          <span className="text-sm leading-none">
+                            {t.flagEmoji}
+                          </span>
+                          <span className="truncate">{t.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
       {/* Vítěz turnaje */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <header className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
@@ -187,12 +283,7 @@ export function SpecialTipsForm({
             {state?.status === "ok" && (
               <span className="inline-flex items-center gap-1.5 text-emerald-700">
                 <Check className="size-4" />
-                Uloženo {state.saved}
-                {state.deleted > 0 && (
-                  <span className="text-slate-500">
-                    {" "}/ smazáno {state.deleted}
-                  </span>
-                )}
+                Uloženo {state.saved + state.advancersSaved}
               </span>
             )}
             {state?.status === "deadline" && (

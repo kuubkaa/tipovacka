@@ -27,36 +27,50 @@ export default async function FormularPage() {
     redirect("/prihlaseni?callbackUrl=/formular");
   }
 
-  const [matches, tips, teams, rankings, specialTips] = await Promise.all([
-    db.match.findMany({
-      where: { stage: "GROUP" },
-      include: {
-        homeTeam: { select: { code: true, name: true, flagEmoji: true } },
-        awayTeam: { select: { code: true, name: true, flagEmoji: true } },
-      },
-      orderBy: [{ group: "asc" }, { dateUtc: "asc" }],
-    }),
-    db.tip.findMany({
-      where: {
-        userId: session.user.id,
-        match: { stage: "GROUP" },
-      },
-      select: { matchId: true, homeScore: true, awayScore: true },
-    }),
-    db.team.findMany({
-      where: { group: { not: null } },
-      select: { code: true, name: true, flagEmoji: true, group: true },
-      orderBy: { name: "asc" },
-    }),
-    db.groupRankingTip.findMany({
-      where: { userId: session.user.id },
-      select: { group: true, teamCodes: true },
-    }),
-    db.specialTip.findMany({
-      where: { userId: session.user.id },
-      select: { type: true, value: true },
-    }),
-  ]);
+  const [matches, tips, teams, rankings, specialTips, knockoutAdvancers] =
+    await Promise.all([
+      db.match.findMany({
+        where: { stage: "GROUP" },
+        include: {
+          homeTeam: { select: { code: true, name: true, flagEmoji: true } },
+          awayTeam: { select: { code: true, name: true, flagEmoji: true } },
+        },
+        orderBy: [{ group: "asc" }, { dateUtc: "asc" }],
+      }),
+      db.tip.findMany({
+        where: {
+          userId: session.user.id,
+          match: { stage: "GROUP" },
+        },
+        select: { matchId: true, homeScore: true, awayScore: true },
+      }),
+      db.team.findMany({
+        where: { group: { not: null } },
+        select: { code: true, name: true, flagEmoji: true, group: true },
+        orderBy: { name: "asc" },
+      }),
+      db.groupRankingTip.findMany({
+        where: { userId: session.user.id },
+        select: { group: true, teamCodes: true },
+      }),
+      db.specialTip.findMany({
+        where: { userId: session.user.id },
+        select: { type: true, value: true },
+      }),
+      db.knockoutAdvancersTip.findMany({
+        where: { userId: session.user.id },
+        select: { stage: true, teamCodes: true },
+      }),
+    ]);
+
+  // Mapování Stage enum -> klíč v UI (R32, R16, QF, SF, F)
+  const STAGE_TO_KEY: Record<string, string> = {
+    ROUND_OF_32: "R32",
+    ROUND_OF_16: "R16",
+    QUARTER_FINAL: "QF",
+    SEMI_FINAL: "SF",
+    FINAL: "F",
+  };
 
   const tipsByMatch = new Map(tips.map((t) => [t.matchId, t]));
   const deadlinePassed = isDeadlinePassed();
@@ -105,6 +119,11 @@ export default async function FormularPage() {
     }));
 
   // --- Speciální tipy: připravit data pro form ---
+  const existingAdvancers: Record<string, string[]> = {};
+  for (const ka of knockoutAdvancers) {
+    const key = STAGE_TO_KEY[ka.stage];
+    if (key) existingAdvancers[key] = ka.teamCodes;
+  }
   const specialTipsData: SpecialTipsData = {
     teams: teams.map((t) => ({
       code: t.code,
@@ -113,6 +132,7 @@ export default async function FormularPage() {
       group: t.group ?? "?",
     })),
     existing: Object.fromEntries(specialTips.map((s) => [s.type, s.value])),
+    existingAdvancers,
   };
 
   return (
@@ -138,16 +158,16 @@ export default async function FormularPage() {
         <nav className="border-t border-slate-100 bg-white">
           <div className="mx-auto flex w-full max-w-3xl gap-4 px-6 py-2 text-sm">
             <a
-              href="#specialni-tipy"
-              className="text-slate-600 hover:text-slate-900"
-            >
-              Speciální tipy
-            </a>
-            <a
               href="#poradi-skupin"
               className="text-slate-600 hover:text-slate-900"
             >
               Pořadí skupin
+            </a>
+            <a
+              href="#specialni-tipy"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Speciální tipy
             </a>
             <a
               href="#vysledky-zapasu"
@@ -181,18 +201,6 @@ export default async function FormularPage() {
           )}
         </div>
 
-        {/* Speciální tipy */}
-        <section id="specialni-tipy" className="mb-12 scroll-mt-32">
-          <div className="mb-4">
-            <h2 className="text-lg font-bold tracking-tight">Speciální tipy</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Vítěz turnaje a králové střelců (turnaj + 12 skupin). Pole můžeš
-              nechat prázdná — uloží se jen vyplněná.
-            </p>
-          </div>
-          <SpecialTipsForm data={specialTipsData} disabled={deadlinePassed} />
-        </section>
-
         {/* Pořadí skupin */}
         <section id="poradi-skupin" className="mb-12 scroll-mt-32">
           <div className="mb-4">
@@ -208,6 +216,18 @@ export default async function FormularPage() {
             groups={rankingGroups}
             disabled={deadlinePassed}
           />
+        </section>
+
+        {/* Speciální tipy */}
+        <section id="specialni-tipy" className="mb-12 scroll-mt-32">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold tracking-tight">Speciální tipy</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Postupující do vyřazovacích kol, vítěz turnaje a králové střelců.
+              Pole můžeš nechat prázdná — uloží se jen to, co vyplníš.
+            </p>
+          </div>
+          <SpecialTipsForm data={specialTipsData} disabled={deadlinePassed} />
         </section>
 
         {/* Výsledky zápasů */}
