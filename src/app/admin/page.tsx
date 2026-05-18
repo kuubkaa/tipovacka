@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, ListChecks, Medal, Network, Trophy } from "lucide-react";
+import {
+  ArrowRight,
+  ListChecks,
+  Mail,
+  Medal,
+  Network,
+  Trophy,
+} from "lucide-react";
 
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
@@ -15,6 +22,7 @@ export default async function AdminPage() {
     knockoutResultsCount,
     specialResultsCount,
     groupScorersCount,
+    userCount,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -28,6 +36,7 @@ export default async function AdminPage() {
     db.tournamentResult.count({
       where: { type: { startsWith: "TOP_SCORER_GROUP_" } },
     }),
+    db.user.count(),
   ]);
 
   const remaining = totalMatches - playedMatches;
@@ -93,6 +102,22 @@ export default async function AdminPage() {
             icon={<Trophy className="size-5 text-amber-600" />}
             title="Speciální výsledky"
             summary={<>{specialResultsCount} / 2 (vítěz + král střelců)</>}
+          />
+
+          <AdminCard
+            href="/admin/pozvanky"
+            icon={<Mail className="size-5 text-rose-600" />}
+            title="Pozvánky kamarádům"
+            summary={
+              <>
+                {userCount}{" "}
+                {userCount === 1
+                  ? "tipér zaregistrován"
+                  : userCount < 5
+                    ? "tipéři zaregistrováni"
+                    : "tipérů zaregistrováno"}
+              </>
+            }
           />
         </div>
       </main>

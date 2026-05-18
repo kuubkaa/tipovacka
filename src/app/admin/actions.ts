@@ -1,8 +1,10 @@
 "use server";
 
 import { auth } from "@/auth";
+import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+import { isValidEmail, sendMail } from "@/lib/mailer";
 
 const GROUP_LETTERS = [
   "A", "B", "C", "D", "E", "F",
@@ -328,4 +330,165 @@ export async function saveSpecialResultsAction(
   }
 
   return { status: "ok", saved, deleted };
+}
+
+// =============================================================================
+// Pozvánkové maily
+// =============================================================================
+
+export type SendInvitationsResult =
+  | {
+      status: "ok";
+      sent: number;
+      failed: Array<{ email: string; error: string }>;
+      invalid: string[];
+    }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  process.env.AUTH_URL ??
+  "https://tipovacka-phi.vercel.app";
+
+const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/**
+ * Pošle pozvánkové maily na zadané emailové adresy. Admin only.
+ *
+ * FormData:
+ *   emails  = textarea, jeden email per řádek nebo oddělené čárkou/středníkem
+ *   message = volitelný osobní vzkaz, který se vloží do mailu
+ */
+export async function sendInvitationsAction(
+  _prev: SendInvitationsResult | null,
+  formData: FormData
+): Promise<SendInvitationsResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { status: "unauth" };
+  if (!session.user.isAdmin) return { status: "forbidden" };
+
+  const rawEmails = (formData.get("emails") ?? "").toString();
+  const personalMessage = (formData.get("message") ?? "").toString().trim();
+
+  // Parser: split podle čárek, středníků, mezer, newline
+  const parts = rawEmails
+    .split(/[\n,;\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s !== "");
+  const seen = new Set<string>();
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  for (const e of parts) {
+    if (seen.has(e)) continue;
+    seen.add(e);
+    if (isValidEmail(e)) valid.push(e);
+    else invalid.push(e);
+  }
+
+  const senderName = session.user.name ?? "Admin tipovačky";
+  const deadlineText = deadlineDateFormatter.format(tournament.deadline);
+
+  const failed: Array<{ email: string; error: string }> = [];
+  let sent = 0;
+
+  for (const email of valid) {
+    try {
+      const { text, html } = buildInvitationContent({
+        recipientEmail: email,
+        senderName,
+        personalMessage,
+        deadlineText,
+        tournamentName: tournament.name,
+        appUrl: APP_URL,
+      });
+      await sendMail({
+        to: email,
+        subject: `Pozvánka do ${tournament.name}`,
+        text,
+        html,
+      });
+      sent++;
+    } catch (err) {
+      failed.push({
+        email,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return { status: "ok", sent, failed, invalid };
+}
+
+function buildInvitationContent(params: {
+  recipientEmail: string;
+  senderName: string;
+  personalMessage: string;
+  deadlineText: string;
+  tournamentName: string;
+  appUrl: string;
+}): { text: string; html: string } {
+  const { senderName, personalMessage, deadlineText, tournamentName, appUrl } =
+    params;
+
+  const intro = personalMessage
+    ? personalMessage
+    : `${senderName} tě zve do tipovačky na MS ve fotbale 2026 (USA, Kanada, Mexiko).`;
+
+  const text = [
+    `Ahoj!`,
+    ``,
+    intro,
+    ``,
+    `Jak začít:`,
+    `1. Otevři ${appUrl}`,
+    `2. Klikni „Přihlásit se" a zadej tvůj email (tento)`,
+    `3. Dostaneš mail s odkazem, kliknutím se přihlásíš`,
+    `4. Vyplň tipy do ${deadlineText}`,
+    ``,
+    `Tipuješ: výsledky všech zápasů, pořadí skupin, postupy, vítěze turnaje a krále střelců.`,
+    `Po startu turnaje uvidíš tipy všech a průběžné pořadí.`,
+    ``,
+    `Hodně štěstí!`,
+    `${senderName}`,
+  ].join("\n");
+
+  const html = `<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="utf-8"><title>Pozvánka do ${tournamentName}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5;color:#1e293b;max-width:560px;margin:0 auto;padding:24px;">
+  <h1 style="margin:0 0 16px;font-size:22px;color:#0f172a;">${escapeHtml(tournamentName)}</h1>
+  <p>Ahoj!</p>
+  <p>${escapeHtml(intro)}</p>
+  <h2 style="margin:24px 0 8px;font-size:16px;color:#0f172a;">Jak začít</h2>
+  <ol style="padding-left:20px;">
+    <li>Otevři <a href="${appUrl}" style="color:#0369a1;">${appUrl}</a></li>
+    <li>Klikni <strong>Přihlásit se</strong> a zadej tento email</li>
+    <li>Dostaneš mail s odkazem, kliknutím se přihlásíš</li>
+    <li>Vyplň tipy do <strong>${escapeHtml(deadlineText)}</strong></li>
+  </ol>
+  <p style="margin-top:24px;">Tipuješ: výsledky všech zápasů, pořadí skupin, postupy, vítěze turnaje a krále střelců. Po startu turnaje uvidíš tipy všech a průběžné pořadí.</p>
+  <div style="margin-top:24px;text-align:center;">
+    <a href="${appUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Pojď tipovat</a>
+  </div>
+  <p style="margin-top:32px;color:#64748b;font-size:13px;">Hodně štěstí!<br>${escapeHtml(senderName)}</p>
+</body></html>`;
+
+  return { text, html };
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
