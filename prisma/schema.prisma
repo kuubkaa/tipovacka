@@ -62,6 +62,7 @@ model User {
   sessions      Session[]
   tips          Tip[]
   specialTips   SpecialTip[]
+  groupRankings GroupRankingTip[]
 }
 
 // =============================================================================
@@ -154,6 +155,20 @@ model Tip {
 
   @@unique([userId, matchId])
   @@index([matchId])
+}
+
+/// Tip uživatele na konečné pořadí ve skupině (1.–4. místo).
+/// `teamCodes` je seřazené pole 4 unikátních team.code, ze stejné skupiny.
+model GroupRankingTip {
+  id        String    @id @default(cuid())
+  userId    String
+  group     GroupName
+  teamCodes String[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, group])
 }
 
 model SpecialTip {

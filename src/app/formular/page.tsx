@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
+import {
+  GroupRankingsForm,
+  type GroupRankingData,
+} from "@/components/group-rankings-form";
 import { TipsForm } from "@/components/tips-form";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
@@ -19,7 +23,7 @@ export default async function FormularPage() {
     redirect("/prihlaseni?callbackUrl=/formular");
   }
 
-  const [matches, tips] = await Promise.all([
+  const [matches, tips, teams, rankings] = await Promise.all([
     db.match.findMany({
       where: { stage: "GROUP" },
       include: {
@@ -35,22 +39,29 @@ export default async function FormularPage() {
       },
       select: { matchId: true, homeScore: true, awayScore: true },
     }),
+    db.team.findMany({
+      where: { group: { not: null } },
+      select: { code: true, name: true, flagEmoji: true, group: true },
+      orderBy: { name: "asc" },
+    }),
+    db.groupRankingTip.findMany({
+      where: { userId: session.user.id },
+      select: { group: true, teamCodes: true },
+    }),
   ]);
 
   const tipsByMatch = new Map(tips.map((t) => [t.matchId, t]));
   const deadlinePassed = isDeadlinePassed();
 
-  // Seskupit zápasy po skupinách (A–L)
-  const groups = new Map<string, typeof matches>();
+  // --- Seskupit zápasy po skupinách (pro <TipsForm>) ---
+  const matchGroups = new Map<string, typeof matches>();
   for (const m of matches) {
     const key = m.group ?? "?";
-    const list = groups.get(key) ?? [];
+    const list = matchGroups.get(key) ?? [];
     list.push(m);
-    groups.set(key, list);
+    matchGroups.set(key, list);
   }
-
-  // Strip Prisma Date objekt na ISO string pro client komponent
-  const groupedSerialized = Array.from(groups.entries())
+  const matchGroupsSerialized = Array.from(matchGroups.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([group, ms]) => ({
       group,
@@ -62,6 +73,27 @@ export default async function FormularPage() {
         away: m.awayTeam!,
         existingTip: tipsByMatch.get(m.id) ?? null,
       })),
+    }));
+
+  // --- Seskupit týmy po skupinách (pro <GroupRankingsForm>) ---
+  const teamsByGroup = new Map<string, typeof teams>();
+  for (const t of teams) {
+    if (!t.group) continue;
+    const list = teamsByGroup.get(t.group) ?? [];
+    list.push(t);
+    teamsByGroup.set(t.group, list);
+  }
+  const rankingByGroup = new Map(rankings.map((r) => [r.group, r.teamCodes]));
+  const rankingGroups: GroupRankingData[] = Array.from(teamsByGroup.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([group, ts]) => ({
+      group,
+      teams: ts.map((t) => ({
+        code: t.code,
+        name: t.name,
+        flagEmoji: t.flagEmoji,
+      })),
+      existingRanking: rankingByGroup.get(group as never) ?? null,
     }));
 
   return (
@@ -84,6 +116,22 @@ export default async function FormularPage() {
             </p>
           </div>
         </div>
+        <nav className="border-t border-slate-100 bg-white">
+          <div className="mx-auto flex w-full max-w-3xl gap-4 px-6 py-2 text-sm">
+            <a
+              href="#poradi-skupin"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Pořadí skupin
+            </a>
+            <a
+              href="#vysledky-zapasu"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Výsledky zápasů
+            </a>
+          </div>
+        </nav>
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
@@ -108,7 +156,36 @@ export default async function FormularPage() {
           )}
         </div>
 
-        <TipsForm groups={groupedSerialized} disabled={deadlinePassed} />
+        {/* Pořadí skupin */}
+        <section id="poradi-skupin" className="mb-12 scroll-mt-32">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold tracking-tight">
+              Pořadí skupin
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              U každé skupiny vyber, kdo skončí na 1.–4. místě. Každý tým můžeš
+              v dané skupině zvolit jen jednou.
+            </p>
+          </div>
+          <GroupRankingsForm
+            groups={rankingGroups}
+            disabled={deadlinePassed}
+          />
+        </section>
+
+        {/* Výsledky zápasů */}
+        <section id="vysledky-zapasu" className="scroll-mt-32">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold tracking-tight">
+              Výsledky zápasů ve skupinách
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Tipy na konkrétní skóre 72 zápasů základní fáze. Můžeš nechat
+              prázdné — ty se neukládají.
+            </p>
+          </div>
+          <TipsForm groups={matchGroupsSerialized} disabled={deadlinePassed} />
+        </section>
       </main>
     </div>
   );
