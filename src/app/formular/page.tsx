@@ -5,6 +5,10 @@ import {
   GroupRankingsForm,
   type GroupRankingData,
 } from "@/components/group-rankings-form";
+import {
+  SpecialTipsForm,
+  type SpecialTipsData,
+} from "@/components/special-tips-form";
 import { TipsForm } from "@/components/tips-form";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
@@ -23,7 +27,7 @@ export default async function FormularPage() {
     redirect("/prihlaseni?callbackUrl=/formular");
   }
 
-  const [matches, tips, teams, rankings] = await Promise.all([
+  const [matches, tips, teams, rankings, specialTips] = await Promise.all([
     db.match.findMany({
       where: { stage: "GROUP" },
       include: {
@@ -47,6 +51,10 @@ export default async function FormularPage() {
     db.groupRankingTip.findMany({
       where: { userId: session.user.id },
       select: { group: true, teamCodes: true },
+    }),
+    db.specialTip.findMany({
+      where: { userId: session.user.id },
+      select: { type: true, value: true },
     }),
   ]);
 
@@ -96,6 +104,17 @@ export default async function FormularPage() {
       existingRanking: rankingByGroup.get(group as never) ?? null,
     }));
 
+  // --- Speciální tipy: připravit data pro form ---
+  const specialTipsData: SpecialTipsData = {
+    teams: teams.map((t) => ({
+      code: t.code,
+      name: t.name,
+      flagEmoji: t.flagEmoji,
+      group: t.group ?? "?",
+    })),
+    existing: Object.fromEntries(specialTips.map((s) => [s.type, s.value])),
+  };
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -118,6 +137,12 @@ export default async function FormularPage() {
         </div>
         <nav className="border-t border-slate-100 bg-white">
           <div className="mx-auto flex w-full max-w-3xl gap-4 px-6 py-2 text-sm">
+            <a
+              href="#specialni-tipy"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Speciální tipy
+            </a>
             <a
               href="#poradi-skupin"
               className="text-slate-600 hover:text-slate-900"
@@ -155,6 +180,18 @@ export default async function FormularPage() {
             </p>
           )}
         </div>
+
+        {/* Speciální tipy */}
+        <section id="specialni-tipy" className="mb-12 scroll-mt-32">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold tracking-tight">Speciální tipy</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Vítěz turnaje a králové střelců (turnaj + 12 skupin). Pole můžeš
+              nechat prázdná — uloží se jen vyplněná.
+            </p>
+          </div>
+          <SpecialTipsForm data={specialTipsData} disabled={deadlinePassed} />
+        </section>
 
         {/* Pořadí skupin */}
         <section id="poradi-skupin" className="mb-12 scroll-mt-32">

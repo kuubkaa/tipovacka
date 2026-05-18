@@ -198,3 +198,84 @@ export async function saveGroupRankingsAction(
   // přechodu jinam (uživatel může F5 udělat sám pro hard sync).
   return { status: "ok", saved, skipped };
 }
+
+// =============================================================================
+// Speciální tipy (vítěz turnaje, králové střelců)
+// =============================================================================
+
+export type SaveSpecialTipsResult =
+  | { status: "ok"; saved: number; deleted: number }
+  | { status: "deadline" }
+  | { status: "unauth" }
+  | { status: "error"; message: string };
+
+const SPECIAL_TIP_TYPES = [
+  "TOURNAMENT_WINNER",
+  "TOP_SCORER_TOURNAMENT",
+  ...GROUP_LETTERS.map((g) => `TOP_SCORER_GROUP_${g}` as const),
+] as const;
+
+const PLAYER_NAME_MAX = 80;
+
+/**
+ * Uloží speciální tipy: vítěz turnaje + 13 králů střelců (1 turnaj + 12 skupin).
+ *
+ * FormData formát:
+ *   special_TOURNAMENT_WINNER          = team code (musí existovat v DB)
+ *   special_TOP_SCORER_TOURNAMENT      = jméno hráče (free text)
+ *   special_TOP_SCORER_GROUP_<A-L>     = jméno hráče (free text)
+ *
+ * Prázdná hodnota = tip smazat (pokud existuje).
+ */
+export async function saveSpecialTipsAction(
+  _prev: SaveSpecialTipsResult | null,
+  formData: FormData
+): Promise<SaveSpecialTipsResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { status: "unauth" };
+  if (isDeadlinePassed()) return { status: "deadline" };
+
+  const userId = session.user.id;
+
+  // Pro validaci vítěze potřebujeme set platných team codes
+  const validTeamCodes = new Set(
+    (await db.team.findMany({ select: { code: true } })).map((t) => t.code)
+  );
+
+  let saved = 0;
+  let deleted = 0;
+
+  for (const type of SPECIAL_TIP_TYPES) {
+    const raw = formData.get(`special_${type}`);
+    const value = typeof raw === "string" ? raw.trim() : "";
+
+    if (value === "") {
+      // Prázdná hodnota — smaž existující tip (pokud je)
+      const res = await db.specialTip.deleteMany({
+        where: { userId, type },
+      });
+      deleted += res.count;
+      continue;
+    }
+
+    // Validace
+    if (type === "TOURNAMENT_WINNER") {
+      if (!validTeamCodes.has(value)) {
+        // Neznámý kód — ignoruj
+        continue;
+      }
+    } else {
+      // Player name — jen omezíme délku
+      if (value.length > PLAYER_NAME_MAX) continue;
+    }
+
+    await db.specialTip.upsert({
+      where: { userId_type: { userId, type } },
+      create: { userId, type, value },
+      update: { value },
+    });
+    saved++;
+  }
+
+  return { status: "ok", saved, deleted };
+}
