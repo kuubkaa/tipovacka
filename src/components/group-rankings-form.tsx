@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import {
@@ -28,6 +28,21 @@ export interface GroupRankingData {
 
 const POSITION_LABELS = ["1. místo", "2. místo", "3. místo", "4. místo"] as const;
 
+/**
+ * Sestaví flat klíč -> hodnota mapu z všech skupin (init z props).
+ * Klíč = `group_<X>_pos<1-4>`, hodnota = team code nebo "".
+ */
+function initialPicks(groups: GroupRankingData[]): Record<string, string> {
+  const init: Record<string, string> = {};
+  for (const g of groups) {
+    for (let i = 0; i < 4; i++) {
+      const key = `group_${g.group}_pos${i + 1}`;
+      init[key] = g.existingRanking?.[i] ?? "";
+    }
+  }
+  return init;
+}
+
 export function GroupRankingsForm({
   groups,
   disabled,
@@ -35,16 +50,33 @@ export function GroupRankingsForm({
   groups: GroupRankingData[];
   disabled: boolean;
 }) {
+  // Controlled state — proč: React 19 + server actions resetují/nerefreshují
+  // `defaultValue` po submit, takže uncontrolled selecty by se po uložení
+  // zobrazovaly prázdné. Drží to v useState.
+  const [picks, setPicks] = useState<Record<string, string>>(() =>
+    initialPicks(groups)
+  );
+
   const [state, formAction, pending] = useActionState<
     SaveGroupRankingsResult | null,
     FormData
   >(saveGroupRankingsAction, null);
 
+  function update(key: string, value: string) {
+    setPicks((p) => ({ ...p, [key]: value }));
+  }
+
   return (
     <form action={formAction} className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {groups.map((g) => (
-          <GroupCard key={g.group} group={g} disabled={disabled} />
+          <GroupCard
+            key={g.group}
+            group={g}
+            disabled={disabled}
+            picks={picks}
+            onPick={update}
+          />
         ))}
       </div>
 
@@ -100,9 +132,13 @@ export function GroupRankingsForm({
 function GroupCard({
   group,
   disabled,
+  picks,
+  onPick,
 }: {
   group: GroupRankingData;
   disabled: boolean;
+  picks: Record<string, string>;
+  onPick: (key: string, value: string) => void;
 }) {
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -114,7 +150,6 @@ function GroupCard({
       <div className="space-y-2 p-4">
         {POSITION_LABELS.map((label, i) => {
           const fieldName = `group_${group.group}_pos${i + 1}`;
-          const defaultCode = group.existingRanking?.[i] ?? "";
           return (
             <div
               key={fieldName}
@@ -129,7 +164,8 @@ function GroupCard({
               <select
                 id={fieldName}
                 name={fieldName}
-                defaultValue={defaultCode}
+                value={picks[fieldName] ?? ""}
+                onChange={(e) => onPick(fieldName, e.target.value)}
                 disabled={disabled}
                 className={cn(selectClass)}
               >

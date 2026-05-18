@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import { saveTipsAction, type SaveTipsResult } from "@/app/formular/actions";
@@ -11,6 +11,18 @@ import { cn } from "@/lib/utils";
 // což rozbíjí FormData. Použijeme native <input> se stejným stylem.
 const scoreInputClass =
   "h-10 w-12 rounded-lg border border-slate-300 bg-white px-1 text-center text-base font-medium text-slate-900 tabular-nums outline-none transition-colors focus-visible:border-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
+
+/** Sestaví klíč -> hodnota mapu pro všechny home_<id>/away_<id> inputy. */
+function initialScores(groups: GroupData[]): Record<string, string> {
+  const init: Record<string, string> = {};
+  for (const g of groups) {
+    for (const m of g.matches) {
+      init[`home_${m.id}`] = m.existingTip?.homeScore?.toString() ?? "";
+      init[`away_${m.id}`] = m.existingTip?.awayScore?.toString() ?? "";
+    }
+  }
+  return init;
+}
 
 const matchDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   weekday: "short",
@@ -47,10 +59,20 @@ export function TipsForm({
   groups: GroupData[];
   disabled: boolean;
 }) {
+  // Controlled state — viz GroupRankingsForm. Bez tohoto by React po
+  // server-action submit vyresetoval inputy a uložené tipy by zmizely z UI.
+  const [scores, setScores] = useState<Record<string, string>>(() =>
+    initialScores(groups)
+  );
+
   const [state, formAction, pending] = useActionState<
     SaveTipsResult | null,
     FormData
   >(saveTipsAction, null);
+
+  function update(key: string, value: string) {
+    setScores((s) => ({ ...s, [key]: value }));
+  }
 
   return (
     <form action={formAction} className="space-y-8">
@@ -67,7 +89,13 @@ export function TipsForm({
 
           <ul className="divide-y divide-slate-100">
             {g.matches.map((m) => (
-              <MatchRow key={m.id} match={m} disabled={disabled} />
+              <MatchRow
+                key={m.id}
+                match={m}
+                disabled={disabled}
+                scores={scores}
+                onChange={update}
+              />
             ))}
           </ul>
         </section>
@@ -117,11 +145,17 @@ export function TipsForm({
 function MatchRow({
   match,
   disabled,
+  scores,
+  onChange,
 }: {
   match: MatchData;
   disabled: boolean;
+  scores: Record<string, string>;
+  onChange: (key: string, value: string) => void;
 }) {
   const date = new Date(match.dateIso);
+  const homeKey = `home_${match.id}`;
+  const awayKey = `away_${match.id}`;
   return (
     <li className="px-4 py-3">
       <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
@@ -137,24 +171,26 @@ function MatchRow({
         {/* Score inputs */}
         <div className="flex items-center gap-1.5">
           <input
-            name={`home_${match.id}`}
+            name={homeKey}
             type="number"
             min={0}
             max={20}
             inputMode="numeric"
-            defaultValue={match.existingTip?.homeScore ?? ""}
+            value={scores[homeKey] ?? ""}
+            onChange={(e) => onChange(homeKey, e.target.value)}
             disabled={disabled}
             className={cn(scoreInputClass)}
             aria-label={`Skóre ${match.home.name}`}
           />
           <span className="text-slate-400">:</span>
           <input
-            name={`away_${match.id}`}
+            name={awayKey}
             type="number"
             min={0}
             max={20}
             inputMode="numeric"
-            defaultValue={match.existingTip?.awayScore ?? ""}
+            value={scores[awayKey] ?? ""}
+            onChange={(e) => onChange(awayKey, e.target.value)}
             disabled={disabled}
             className={cn(scoreInputClass)}
             aria-label={`Skóre ${match.away.name}`}
