@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight, CalendarClock, Trophy } from "lucide-react";
 
 import { auth, signOut } from "@/auth";
-import { buttonVariants } from "@/components/ui/button";
 import { tournament, isDeadlinePassed } from "@/config/tournament";
 
 const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
@@ -126,37 +125,23 @@ export default async function Home() {
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
           <Link
             href="/formular"
-            className={buttonVariants({
-              size: "lg",
-              className:
-                "h-12 gap-2 rounded-full bg-amber-400 px-7 text-base font-semibold text-slate-950 hover:bg-amber-300",
-            })}
+            className="inline-flex h-14 items-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-slate-950 shadow-xl shadow-amber-500/30 ring-1 ring-amber-300/60 transition-all hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-amber-400/40 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-amber-300"
           >
             Vyplnit tipy
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-5" />
           </Link>
 
           {deadlinePassed ? (
             <Link
               href="/tipy"
-              className={buttonVariants({
-                variant: "outline",
-                size: "lg",
-                className:
-                  "h-12 rounded-full border-white/30 bg-white/5 px-6 text-base text-white hover:bg-white/15 hover:text-white",
-              })}
+              className="inline-flex h-12 items-center rounded-full border border-white/30 bg-white/5 px-6 text-sm font-medium text-white transition-colors hover:bg-white/15"
             >
               Zobrazit tipy všech
             </Link>
           ) : (
             <Link
               href="/pravidla"
-              className={buttonVariants({
-                variant: "ghost",
-                size: "lg",
-                className:
-                  "h-12 rounded-full px-6 text-base text-white/80 hover:bg-white/10 hover:text-white",
-              })}
+              className="inline-flex h-12 items-center rounded-full px-6 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               Jak se boduje
             </Link>
