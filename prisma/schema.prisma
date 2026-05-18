@@ -188,6 +188,33 @@ model KnockoutAdvancersTip {
   @@unique([userId, stage])
 }
 
+// =============================================================================
+// Skutečné výsledky (zadává admin) — analogie tipů, ale jedna canonická verze
+// =============================================================================
+
+/// Skutečné pořadí ve skupině (1.–4. místo).
+model GroupRankingResult {
+  group     GroupName @id
+  teamCodes String[]
+  updatedAt DateTime  @updatedAt
+}
+
+/// Skutečné týmy, které postoupily do daného vyřazovacího kola.
+model KnockoutAdvancersResult {
+  stage     Stage    @id
+  teamCodes String[]
+  updatedAt DateTime @updatedAt
+}
+
+/// Skutečný vítěz turnaje, král střelců turnaje, králové střelců skupin.
+/// type používá stejné konvence jako SpecialTip:
+/// "TOURNAMENT_WINNER", "TOP_SCORER_TOURNAMENT", "TOP_SCORER_GROUP_<A-L>".
+model TournamentResult {
+  type      String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model SpecialTip {
   id        String   @id @default(cuid())
   userId    String

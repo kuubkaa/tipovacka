@@ -1,0 +1,185 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Check, Loader2 } from "lucide-react";
+
+import {
+  saveKnockoutResultsAction,
+  type SaveKnockoutResultsResult,
+} from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+
+interface TeamRef {
+  code: string;
+  name: string;
+  flagEmoji: string | null;
+  group: string;
+}
+
+export interface KnockoutResultsData {
+  teams: TeamRef[];
+  existing: Record<string, string[]>;
+}
+
+function initialAdvancers(
+  data: KnockoutResultsData
+): Record<string, Set<string>> {
+  const init: Record<string, Set<string>> = {};
+  for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+    init[round.key] = new Set(data.existing[round.key] ?? []);
+  }
+  return init;
+}
+
+export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
+  const [advancers, setAdvancers] = useState<Record<string, Set<string>>>(() =>
+    initialAdvancers(data)
+  );
+  const [state, setState] = useState<SaveKnockoutResultsResult | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function toggle(roundKey: string, code: string) {
+    setAdvancers((prev) => {
+      const set = new Set(prev[roundKey] ?? []);
+      if (set.has(code)) set.delete(code);
+      else set.add(code);
+      return { ...prev, [roundKey]: set };
+    });
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (pending) return;
+    const formData = new FormData();
+    for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+      const set = advancers[round.key] ?? new Set();
+      for (const code of set) {
+        formData.append(`advancers_${round.key}`, code);
+      }
+    }
+    startTransition(async () => {
+      const result = await saveKnockoutResultsAction(null, formData);
+      setState(result);
+    });
+  }
+
+  const teamsByGroup = new Map<string, TeamRef[]>();
+  for (const t of data.teams) {
+    const list = teamsByGroup.get(t.group) ?? [];
+    list.push(t);
+    teamsByGroup.set(t.group, list);
+  }
+  const orderedGroups = Array.from(teamsByGroup.entries()).sort(([a], [b]) =>
+    a.localeCompare(b)
+  );
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {KNOCKOUT_ADVANCERS_ROUNDS.map((round) => {
+        const selectedSet = advancers[round.key] ?? new Set<string>();
+        return (
+          <section
+            key={round.key}
+            className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+          >
+            <header className="flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <h2 className="text-sm font-semibold tracking-wide text-slate-700">
+                {round.label}
+              </h2>
+              <span
+                className={cn(
+                  "text-xs font-medium tabular-nums",
+                  selectedSet.size === round.targetCount
+                    ? "text-emerald-700"
+                    : "text-slate-500"
+                )}
+              >
+                {selectedSet.size} / {round.targetCount}
+              </span>
+            </header>
+            <div className="space-y-3 p-4">
+              {orderedGroups.map(([group, ts]) => (
+                <div key={group}>
+                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+                    Skupina {group}
+                  </p>
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
+                    {ts.map((t) => {
+                      const selected = selectedSet.has(t.code);
+                      return (
+                        <label
+                          key={t.code}
+                          title={t.name}
+                          className={cn(
+                            "flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                            selected
+                              ? "border-slate-900 bg-slate-900 text-white"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-100"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={selected}
+                            onChange={() => toggle(round.key, t.code)}
+                          />
+                          <span className="text-sm leading-none">
+                            {t.flagEmoji}
+                          </span>
+                          <span className="truncate">{t.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+
+      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm text-slate-600">
+            {state?.status === "ok" && (
+              <span className="inline-flex items-center gap-1.5 text-emerald-700">
+                <Check className="size-4" />
+                Uloženo {state.saved} kol
+                {state.cleared > 0 && (
+                  <span className="text-slate-500">
+                    {" "}/ {state.cleared} smazáno
+                  </span>
+                )}
+              </span>
+            )}
+            {state?.status === "forbidden" && (
+              <span className="text-rose-700">Nemáš admin práva.</span>
+            )}
+            {state?.status === "unauth" && (
+              <span className="text-rose-700">Nejsi přihlášen.</span>
+            )}
+            {state?.status === "error" && (
+              <span className="text-rose-700">Chyba: {state.message}</span>
+            )}
+          </div>
+          <Button
+            type="submit"
+            disabled={pending}
+            className="h-10 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+                Ukládám…
+              </>
+            ) : (
+              "Uložit postupující"
+            )}
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}

@@ -2,6 +2,20 @@
 
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+
+const GROUP_LETTERS = [
+  "A", "B", "C", "D", "E", "F",
+  "G", "H", "I", "J", "K", "L",
+] as const;
+type GroupLetter = (typeof GROUP_LETTERS)[number];
+
+async function requireAdminSession() {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  if (!session.user.isAdmin) return null;
+  return session;
+}
 
 export type SaveMatchResultsResult =
   | { status: "ok"; updated: number; cleared: number }
@@ -108,4 +122,210 @@ export async function saveMatchResultsAction(
   }
 
   return { status: "ok", updated, cleared };
+}
+
+// =============================================================================
+// Skupiny — pořadí + králové střelců (skutečné)
+// =============================================================================
+
+export type SaveGroupResultsResult =
+  | {
+      status: "ok";
+      saved: number;
+      skipped: string[];
+      scorersSaved: number;
+      scorersDeleted: number;
+    }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+export async function saveGroupResultsAction(
+  _prev: SaveGroupResultsResult | null,
+  formData: FormData
+): Promise<SaveGroupResultsResult> {
+  const session = await requireAdminSession();
+  if (!session) return { status: "forbidden" };
+
+  const teams = await db.team.findMany({
+    where: { group: { not: null } },
+    select: { code: true, group: true },
+  });
+  const codesByGroup = new Map<string, Set<string>>();
+  for (const t of teams) {
+    if (!t.group) continue;
+    const set = codesByGroup.get(t.group) ?? new Set<string>();
+    set.add(t.code);
+    codesByGroup.set(t.group, set);
+  }
+
+  const skipped: string[] = [];
+  let saved = 0;
+
+  for (const group of GROUP_LETTERS) {
+    const codes = [
+      formData.get(`group_${group}_pos1`),
+      formData.get(`group_${group}_pos2`),
+      formData.get(`group_${group}_pos3`),
+      formData.get(`group_${group}_pos4`),
+    ].map((v) => (typeof v === "string" ? v.trim() : ""));
+
+    if (codes.every((c) => c === "")) {
+      // Smaž existující result, pokud jsme ho předtím uložili
+      await db.groupRankingResult.deleteMany({
+        where: { group: group as GroupLetter },
+      });
+      continue;
+    }
+
+    const valid =
+      codes.every((c) => c !== "") &&
+      new Set(codes).size === 4 &&
+      codes.every((c) => codesByGroup.get(group)?.has(c));
+
+    if (!valid) {
+      skipped.push(group);
+      continue;
+    }
+
+    await db.groupRankingResult.upsert({
+      where: { group: group as GroupLetter },
+      create: { group: group as GroupLetter, teamCodes: codes },
+      update: { teamCodes: codes },
+    });
+    saved++;
+  }
+
+  // Králové střelců skupin → TournamentResult s TOP_SCORER_GROUP_<X>
+  let scorersSaved = 0;
+  let scorersDeleted = 0;
+  for (const group of GROUP_LETTERS) {
+    const raw = formData.get(`group_${group}_scorer`);
+    const value = typeof raw === "string" ? raw.trim() : "";
+    const type = `TOP_SCORER_GROUP_${group}`;
+    if (value === "") {
+      const res = await db.tournamentResult.deleteMany({ where: { type } });
+      scorersDeleted += res.count;
+      continue;
+    }
+    if (value.length > 80) continue;
+    await db.tournamentResult.upsert({
+      where: { type },
+      create: { type, value },
+      update: { value },
+    });
+    scorersSaved++;
+  }
+
+  return { status: "ok", saved, skipped, scorersSaved, scorersDeleted };
+}
+
+// =============================================================================
+// Postupující do vyřazovacích kol (skutečné)
+// =============================================================================
+
+export type SaveKnockoutResultsResult =
+  | { status: "ok"; saved: number; cleared: number }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+export async function saveKnockoutResultsAction(
+  _prev: SaveKnockoutResultsResult | null,
+  formData: FormData
+): Promise<SaveKnockoutResultsResult> {
+  const session = await requireAdminSession();
+  if (!session) return { status: "forbidden" };
+
+  const validTeamCodes = new Set(
+    (await db.team.findMany({ select: { code: true } })).map((t) => t.code)
+  );
+
+  let saved = 0;
+  let cleared = 0;
+
+  for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+    const raw = formData.getAll(`advancers_${round.key}`);
+    const codes = Array.from(
+      new Set(
+        raw
+          .filter((v): v is string => typeof v === "string")
+          .map((v) => v.trim())
+          .filter((v) => v !== "" && validTeamCodes.has(v))
+      )
+    );
+
+    if (codes.length === 0) {
+      const res = await db.knockoutAdvancersResult.deleteMany({
+        where: { stage: round.stage },
+      });
+      cleared += res.count;
+      continue;
+    }
+
+    await db.knockoutAdvancersResult.upsert({
+      where: { stage: round.stage },
+      create: { stage: round.stage, teamCodes: codes },
+      update: { teamCodes: codes },
+    });
+    saved++;
+  }
+
+  return { status: "ok", saved, cleared };
+}
+
+// =============================================================================
+// Speciální výsledky — vítěz turnaje + král střelců turnaje
+// =============================================================================
+
+export type SaveSpecialResultsResult =
+  | { status: "ok"; saved: number; deleted: number }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+const SPECIAL_RESULT_TYPES = [
+  "TOURNAMENT_WINNER",
+  "TOP_SCORER_TOURNAMENT",
+] as const;
+
+export async function saveSpecialResultsAction(
+  _prev: SaveSpecialResultsResult | null,
+  formData: FormData
+): Promise<SaveSpecialResultsResult> {
+  const session = await requireAdminSession();
+  if (!session) return { status: "forbidden" };
+
+  const validTeamCodes = new Set(
+    (await db.team.findMany({ select: { code: true } })).map((t) => t.code)
+  );
+
+  let saved = 0;
+  let deleted = 0;
+
+  for (const type of SPECIAL_RESULT_TYPES) {
+    const raw = formData.get(`special_${type}`);
+    const value = typeof raw === "string" ? raw.trim() : "";
+
+    if (value === "") {
+      const res = await db.tournamentResult.deleteMany({ where: { type } });
+      deleted += res.count;
+      continue;
+    }
+
+    if (type === "TOURNAMENT_WINNER") {
+      if (!validTeamCodes.has(value)) continue;
+    } else {
+      if (value.length > 80) continue;
+    }
+
+    await db.tournamentResult.upsert({
+      where: { type },
+      create: { type, value },
+      update: { value },
+    });
+    saved++;
+  }
+
+  return { status: "ok", saved, deleted };
 }

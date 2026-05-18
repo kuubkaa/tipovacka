@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ListChecks } from "lucide-react";
+import { ArrowRight, ListChecks, Medal, Network, Trophy } from "lucide-react";
 
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
@@ -8,13 +8,28 @@ import { tournament } from "@/config/tournament";
 export default async function AdminPage() {
   await requireAdmin("/admin");
 
-  // Stats pro admin landing
-  const [totalMatches, playedMatches] = await Promise.all([
+  const [
+    totalMatches,
+    playedMatches,
+    groupResultsCount,
+    knockoutResultsCount,
+    specialResultsCount,
+    groupScorersCount,
+  ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
       where: { stage: "GROUP", homeScore: { not: null }, awayScore: { not: null } },
     }),
+    db.groupRankingResult.count(),
+    db.knockoutAdvancersResult.count(),
+    db.tournamentResult.count({
+      where: { type: { in: ["TOURNAMENT_WINNER", "TOP_SCORER_TOURNAMENT"] } },
+    }),
+    db.tournamentResult.count({
+      where: { type: { startsWith: "TOP_SCORER_GROUP_" } },
+    }),
   ]);
+
   const remaining = totalMatches - playedMatches;
 
   return (
@@ -38,47 +53,75 @@ export default async function AdminPage() {
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Link
+          <AdminCard
             href="/admin/zapasy"
-            className="group flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-5 transition-colors hover:border-slate-400"
-          >
-            <div className="flex items-center justify-between">
-              <ListChecks className="size-5 text-emerald-600" />
-              <ArrowRight className="size-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
-            </div>
-            <h2 className="text-base font-semibold">Výsledky zápasů</h2>
-            <p className="text-sm text-slate-600">
-              {playedMatches} / {totalMatches} zápasů zadaných
-              {remaining > 0 && (
-                <span className="ml-1 text-amber-700">
-                  ({remaining} zbývá)
-                </span>
-              )}
-            </p>
-          </Link>
+            icon={<ListChecks className="size-5 text-emerald-600" />}
+            title="Výsledky zápasů"
+            summary={
+              <>
+                {playedMatches} / {totalMatches} zápasů zadaných
+                {remaining > 0 && (
+                  <span className="ml-1 text-amber-700">
+                    ({remaining} zbývá)
+                  </span>
+                )}
+              </>
+            }
+          />
 
-          <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-5 opacity-60">
-            <h2 className="text-base font-semibold">Pořadí skupin</h2>
-            <p className="text-sm text-slate-500">
-              Doplníme v další iteraci — odemyká se po skončení skupin.
-            </p>
-          </div>
+          <AdminCard
+            href="/admin/skupiny"
+            icon={<Medal className="size-5 text-sky-600" />}
+            title="Pořadí skupin"
+            summary={
+              <>
+                {groupResultsCount} / 12 pořadí ·{" "}
+                {groupScorersCount} / 12 střelců skupin
+              </>
+            }
+          />
 
-          <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-5 opacity-60">
-            <h2 className="text-base font-semibold">Postupující kola</h2>
-            <p className="text-sm text-slate-500">
-              R32 → R16 → ČF → SF → F. V další iteraci.
-            </p>
-          </div>
+          <AdminCard
+            href="/admin/postupujici"
+            icon={<Network className="size-5 text-indigo-600" />}
+            title="Postupující kola"
+            summary={<>{knockoutResultsCount} / 5 kol vyplněno</>}
+          />
 
-          <div className="flex flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-5 opacity-60">
-            <h2 className="text-base font-semibold">Speciální tipy</h2>
-            <p className="text-sm text-slate-500">
-              Vítěz turnaje, králové střelců. V další iteraci.
-            </p>
-          </div>
+          <AdminCard
+            href="/admin/specialni"
+            icon={<Trophy className="size-5 text-amber-600" />}
+            title="Speciální výsledky"
+            summary={<>{specialResultsCount} / 2 (vítěz + král střelců)</>}
+          />
         </div>
       </main>
     </div>
+  );
+}
+
+function AdminCard({
+  href,
+  icon,
+  title,
+  summary,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  title: string;
+  summary: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-5 transition-colors hover:border-slate-400"
+    >
+      <div className="flex items-center justify-between">
+        {icon}
+        <ArrowRight className="size-4 text-slate-400 transition-transform group-hover:translate-x-0.5" />
+      </div>
+      <h2 className="text-base font-semibold">{title}</h2>
+      <p className="text-sm text-slate-600">{summary}</p>
+    </Link>
   );
 }
