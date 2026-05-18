@@ -26,7 +26,8 @@ const KNOCKOUT_ORDER: Record<string, { idx: number; label: string }> = {
   ROUND_OF_16: { idx: 2, label: "Osmifinále" },
   QUARTER_FINAL: { idx: 3, label: "Čtvrtfinále" },
   SEMI_FINAL: { idx: 4, label: "Semifinále" },
-  FINAL: { idx: 5, label: "Finále" },
+  THIRD_PLACE: { idx: 5, label: "O 3. místo" },
+  FINAL: { idx: 6, label: "Finále" },
 };
 
 export default async function FormularPage() {

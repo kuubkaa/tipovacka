@@ -512,6 +512,7 @@ const KNOCKOUT_STAGES = [
   { stage: "ROUND_OF_16" as const, count: 8, prefix: "R16" },
   { stage: "QUARTER_FINAL" as const, count: 4, prefix: "QF" },
   { stage: "SEMI_FINAL" as const, count: 2, prefix: "SF" },
+  { stage: "THIRD_PLACE" as const, count: 1, prefix: "BRONZ" },
   { stage: "FINAL" as const, count: 1, prefix: "F" },
 ] as const;
 

@@ -107,8 +107,9 @@ export default async function AdminPavoukPage() {
             (= výkop).
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            Datum a čas zadávej v lokálním (pražském) čase. Bronz (zápas o 3.
-            místo) zatím není zahrnut — můžeme doplnit, až bude potřeba.
+            Datum a čas zadávej v lokálním (pražském) čase. Sekce „O 3. místo"
+            je jeden zápas mezi poraženými ze semifinále, hraje se obvykle den
+            před finále.
           </p>
         </div>
         <KnockoutFixturesForm data={data} />

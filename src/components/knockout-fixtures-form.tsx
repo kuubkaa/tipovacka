@@ -38,6 +38,7 @@ const ROUNDS = [
   { prefix: "R16", label: "Osmifinále", count: 8 },
   { prefix: "QF", label: "Čtvrtfinále", count: 4 },
   { prefix: "SF", label: "Semifinále", count: 2 },
+  { prefix: "BRONZ", label: "O 3. místo", count: 1 },
   { prefix: "F", label: "Finále", count: 1 },
 ] as const;
 

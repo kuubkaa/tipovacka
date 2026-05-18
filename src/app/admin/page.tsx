@@ -47,6 +47,7 @@ export default async function AdminPage() {
             "ROUND_OF_16",
             "QUARTER_FINAL",
             "SEMI_FINAL",
+            "THIRD_PLACE",
             "FINAL",
           ],
         },
@@ -55,7 +56,7 @@ export default async function AdminPage() {
   ]);
 
   const remaining = totalMatches - playedMatches;
-  const TOTAL_KNOCKOUT = 16 + 8 + 4 + 2 + 1; // R32 + R16 + QF + SF + F = 31
+  const TOTAL_KNOCKOUT = 16 + 8 + 4 + 2 + 1 + 1; // R32 + R16 + QF + SF + Bronz + F = 32
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
