@@ -137,7 +137,7 @@ export function SpecialTipsForm({
                   <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
                     Skupina {group}
                   </p>
-                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
                     {ts.map((t) => {
                       const selected = selectedSet.has(t.code);
                       return (
@@ -162,10 +162,7 @@ export function SpecialTipsForm({
                           <span className="text-sm leading-none">
                             {t.flagEmoji}
                           </span>
-                          <span className="truncate">
-                            <span className="sm:hidden">{t.code}</span>
-                            <span className="hidden sm:inline">{t.name}</span>
-                          </span>
+                          <span className="truncate">{t.name}</span>
                         </label>
                       );
                     })}

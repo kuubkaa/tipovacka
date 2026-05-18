@@ -172,14 +172,19 @@ function MatchRow({
       <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
         {matchDateFormatter.format(date)}
       </p>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-        {/* Home team — code on mobile, full name on sm+ */}
-        <div className="flex min-w-0 items-center justify-end gap-2 text-sm font-medium text-slate-900">
-          <span className="truncate text-right">
-            <span className="sm:hidden">{match.home.code}</span>
-            <span className="hidden sm:inline">{match.home.name}</span>
+      {/*
+        Mobile: stack do třech řádků (home / score / away) — celé názvy se vejdou.
+        Tablety + desktop (sm+): vodorovný layout `home | score | away`.
+      */}
+      <div className="flex flex-col items-center gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
+        {/* Home team */}
+        <div className="flex w-full min-w-0 items-center gap-2 text-sm font-medium text-slate-900 sm:justify-end">
+          <span className="text-xl leading-none sm:order-2">
+            {match.home.flagEmoji}
           </span>
-          <span className="text-xl leading-none">{match.home.flagEmoji}</span>
+          <span className="truncate sm:order-1 sm:text-right">
+            {match.home.name}
+          </span>
         </div>
 
         {/* Score inputs */}
@@ -211,13 +216,10 @@ function MatchRow({
           />
         </div>
 
-        {/* Away team — code on mobile, full name on sm+ */}
-        <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-900">
+        {/* Away team */}
+        <div className="flex w-full min-w-0 items-center gap-2 text-sm font-medium text-slate-900">
           <span className="text-xl leading-none">{match.away.flagEmoji}</span>
-          <span className="truncate">
-            <span className="sm:hidden">{match.away.code}</span>
-            <span className="hidden sm:inline">{match.away.name}</span>
-          </span>
+          <span className="truncate">{match.away.name}</span>
         </div>
       </div>
     </li>
