@@ -101,8 +101,8 @@ export default async function FormularPage() {
         home: m.homeTeam!,
         away: m.awayTeam!,
         existingTip: tipsByMatch.get(m.id) ?? null,
-        // Skupinová fáze: zamčená globálním deadlinem.
-        locked: globalDeadlinePassed,
+        // Per-zápas zámek (výkop) — jednotné pravidlo pro skupiny i KO.
+        locked: now >= m.dateUtc,
       })),
     }));
 
@@ -254,17 +254,19 @@ export default async function FormularPage() {
         >
           {globalDeadlinePassed ? (
             <p>
-              <strong>Skupinový deadline uplynul</strong> ({" "}
-              {dateFormatter.format(tournament.deadline)}). Tipy na skupinové
-              zápasy + pořadí + speciální tipy jsou uzamčené. Vyřazovací zápasy
-              lze tipovat individuálně do jejich výkopu.
+              <strong>Deadline pořadí + speciálních tipů uplynul</strong> (
+              {dateFormatter.format(tournament.deadline)}). Tyto sekce jsou
+              uzamčené. Jednotlivé zápasy jsou dál editovatelné individuálně
+              do jejich výkopu.
             </p>
           ) : (
             <p>
-              Tipy můžeš měnit do{" "}
-              <strong>{dateFormatter.format(tournament.deadline)}</strong>. Po
-              uzávěrce se zveřejní tipy všech a začne se bodovat. Vyřazovací
-              fáze se odemkne postupně, jak admin přidává páry.
+              <strong>Pořadí skupin</strong> a <strong>Speciální tipy</strong>{" "}
+              můžeš měnit do{" "}
+              <strong>{dateFormatter.format(tournament.deadline)}</strong>{" "}
+              (výkop úvodního zápasu). <strong>Tipy zápasů</strong> mají vlastní
+              deadline = výkop daného utkání, takže můžeš editovat klidně až do
+              poslední chvíle.
             </p>
           )}
         </div>

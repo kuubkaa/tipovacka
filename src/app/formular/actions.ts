@@ -43,7 +43,6 @@ export async function saveTipsAction(
 
   const userId = session.user.id;
   const now = new Date();
-  const globalDeadlinePassed = isDeadlinePassed(now);
 
   // Posbírej páry (matchId, home, away) z FormData
   const updates: Array<{ matchId: string; home: number; away: number }> = [];
@@ -77,11 +76,11 @@ export async function saveTipsAction(
     updates.push({ matchId, home, away });
   }
 
-  // Načti dotčené matche se stage + dateUtc kvůli deadline kontrole
+  // Načti dotčené matche s dateUtc kvůli per-match deadline kontrole
   const matchIds = updates.map((u) => u.matchId);
   const validMatches = await db.match.findMany({
     where: { id: { in: matchIds } },
-    select: { id: true, stage: true, dateUtc: true },
+    select: { id: true, dateUtc: true },
   });
   const matchById = new Map(validMatches.map((m) => [m.id, m]));
 
@@ -91,11 +90,8 @@ export async function saveTipsAction(
     const m = matchById.get(u.matchId);
     if (!m) continue; // Neznámý zápas
 
-    // Skupinová fáze: locknuté globálním deadlinem.
-    // Vyřazovací: každý zápas má vlastní deadline = výkop.
-    const locked =
-      m.stage === "GROUP" ? globalDeadlinePassed : now >= m.dateUtc;
-    if (locked) {
+    // Per-zápas deadline = výkop (jednotně pro skupiny i vyřazovací).
+    if (now >= m.dateUtc) {
       lockedSkipped++;
       continue;
     }

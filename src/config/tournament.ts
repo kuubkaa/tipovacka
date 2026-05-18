@@ -13,9 +13,10 @@ export const tournament = {
   // Cesta k logu v adresáři /public
   logoUrl: "/logo.png",
 
-  // Deadline pro odevzdání tipů (po tomto datu se zobrazí tipy všech)
-  // Start MS 2026: 11. června 2026, 20:00 SELČ
-  deadline: new Date("2026-06-11T20:00:00+02:00"),
+  // Deadline pro odevzdání tipů na pořadí skupin a speciálních tipů.
+  // Zápasy mají vlastní deadline = výkop daného utkání.
+  // 11. června 2026 21:00 SELČ = výkop úvodního zápasu MEX–RSA.
+  deadline: new Date("2026-06-11T21:00:00+02:00"),
 
   // Email zobrazený v patičce pro dotazy
   contactEmail: "jakubmilotinsky@gmail.com",
