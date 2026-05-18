@@ -10,7 +10,8 @@ import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
  * z nejvyššího tieru, který sedí (NE součet). Pořadí od nejvyššího:
  *   1. exact            — přesné skóre
  *   2. winnerAndDiff    — správný vítěz/remíza + stejný gólový rozdíl
- *   3. winnerOnly       — jen správný vítěz (jiný rozdíl)
+ *                         (remíza vždy spadne sem — rozdíl = 0)
+ *   3. winnerOnly       — jen správný vítěz, jiný rozdíl (nikdy remíza)
  *   4. totalGoals       — vítěz špatně, ale stejný počet gólů celkem
  *   jinak 0.
  *
@@ -29,7 +30,8 @@ export const SCORING = {
     exact: 10,
     /** Správný vítěz/remíza a stejný gólový rozdíl (tip 2:1, výsledek 3:2) */
     winnerAndDiff: 6,
-    /** Jen správný vítěz / remíza, jiný rozdíl */
+    /** Jen správný vítěz, jiný rozdíl (remíza spadne vždy do winnerAndDiff,
+     *  protože tipy i výsledek mají rozdíl 0). */
     winnerOnly: 3,
     /** Útěcha: vítěz špatně, ale stejný celkový počet gólů (tip 3:0, real 1:2) */
     totalGoals: 1,

@@ -72,8 +72,8 @@ export default async function LeaderboardPage() {
         <div className="mt-6 space-y-1 text-xs text-slate-500">
           <p>
             <strong className="text-slate-700">Zápas (cascade):</strong>{" "}
-            přesné skóre {SCORING.match.exact} · vítěz + gólový rozdíl{" "}
-            {SCORING.match.winnerAndDiff} · jen vítěz/remíza{" "}
+            přesné skóre {SCORING.match.exact} · vítěz/remíza + gólový rozdíl{" "}
+            {SCORING.match.winnerAndDiff} · jen vítěz{" "}
             {SCORING.match.winnerOnly} · jen počet gólů celkem{" "}
             {SCORING.match.totalGoals}
           </p>
