@@ -45,6 +45,12 @@ export default async function LeaderboardPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/leaderboard/prehled"
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+            >
+              Kompletní přehled
+            </Link>
             <PrintButton />
             <Trophy className="size-5 text-amber-500" />
           </div>

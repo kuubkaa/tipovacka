@@ -1,0 +1,409 @@
+import Link from "next/link";
+
+import { OverviewClient } from "@/components/overview-client";
+import { tournament } from "@/config/tournament";
+import { requireSession } from "@/lib/auth-guards";
+import { db } from "@/lib/db";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+import {
+  SCORING,
+  scoreAdvancers,
+  scoreGroupRanking,
+  scoreMatchTip,
+  scorePlayerName,
+  scoreTournamentWinner,
+} from "@/lib/scoring";
+
+export default async function PrehledPage() {
+  const session = await requireSession("/leaderboard/prehled");
+  const currentUserId = session.user.id;
+
+  const [
+    users,
+    matches,
+    matchTips,
+    teams,
+    groupResults,
+    groupTips,
+    knockoutResults,
+    knockoutTips,
+    tournamentResults,
+    specialTips,
+  ] = await Promise.all([
+    db.user.findMany({
+      select: { id: true, name: true, email: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.match.findMany({
+      where: { stage: "GROUP" },
+      include: {
+        homeTeam: { select: { code: true, name: true, flagEmoji: true } },
+        awayTeam: { select: { code: true, name: true, flagEmoji: true } },
+      },
+      orderBy: [{ group: "asc" }, { dateUtc: "asc" }],
+    }),
+    db.tip.findMany({
+      select: { userId: true, matchId: true, homeScore: true, awayScore: true },
+    }),
+    db.team.findMany({
+      select: { code: true, name: true, flagEmoji: true, group: true },
+    }),
+    db.groupRankingResult.findMany({
+      select: { group: true, teamCodes: true },
+    }),
+    db.groupRankingTip.findMany({
+      select: { userId: true, group: true, teamCodes: true },
+    }),
+    db.knockoutAdvancersResult.findMany({
+      select: { stage: true, teamCodes: true },
+    }),
+    db.knockoutAdvancersTip.findMany({
+      select: { userId: true, stage: true, teamCodes: true },
+    }),
+    db.tournamentResult.findMany({
+      select: { type: true, value: true },
+    }),
+    db.specialTip.findMany({
+      select: { userId: true, type: true, value: true },
+    }),
+  ]);
+
+  const teamByCode = new Map(teams.map((t) => [t.code, t]));
+
+  // Pomocné indexy
+  const matchTipKey = (uId: string, mId: string) => `${uId}__${mId}`;
+  const matchTipMap = new Map<string, { home: number; away: number }>();
+  for (const t of matchTips) {
+    matchTipMap.set(matchTipKey(t.userId, t.matchId), {
+      home: t.homeScore,
+      away: t.awayScore,
+    });
+  }
+
+  const groupRankingTipMap = new Map<string, string[]>();
+  for (const t of groupTips) {
+    groupRankingTipMap.set(`${t.userId}__${t.group}`, t.teamCodes);
+  }
+  const groupRankingResultMap = new Map<string, string[]>(
+    groupResults.map((r) => [r.group as string, r.teamCodes])
+  );
+
+  const knockoutTipMap = new Map<string, string[]>();
+  for (const t of knockoutTips) {
+    knockoutTipMap.set(`${t.userId}__${t.stage}`, t.teamCodes);
+  }
+  const knockoutResultMap = new Map<string, string[]>(
+    knockoutResults.map((r) => [r.stage as string, r.teamCodes])
+  );
+
+  const specialTipMap = new Map<string, string>();
+  for (const t of specialTips) {
+    specialTipMap.set(`${t.userId}__${t.type}`, t.value);
+  }
+  const tournamentResultMap = new Map(
+    tournamentResults.map((r) => [r.type, r.value])
+  );
+
+  // Skupinová písmena (A–L)
+  const groupLetters = Array.from(
+    new Set(
+      teams
+        .map((t) => t.group)
+        .filter((g): g is NonNullable<typeof g> => g !== null)
+        .map((g) => g as string)
+    )
+  ).sort();
+
+  // Vytvoříme sloupce (events) a poté řádky (tipéři) s buňkami
+  type Column = {
+    key: string;
+    short: string; // hlavička, kratší
+    sub?: string; // podtitulek
+    real: string; // hodnota pro řádek "skutečně"
+    cell: (userId: string) => { text: string; points: number };
+  };
+
+  const columns: Column[] = [];
+
+  // --- Zápasy ---
+  for (const m of matches) {
+    const homeCode = m.homeTeam?.code ?? "?";
+    const awayCode = m.awayTeam?.code ?? "?";
+    const realScore =
+      m.homeScore !== null && m.awayScore !== null
+        ? `${m.homeScore}:${m.awayScore}`
+        : "—";
+    columns.push({
+      key: `m_${m.id}`,
+      short: `${homeCode}–${awayCode}`,
+      sub: `Sk. ${m.group ?? "?"}`,
+      real: realScore,
+      cell: (userId) => {
+        const t = matchTipMap.get(matchTipKey(userId, m.id));
+        if (!t) return { text: "—", points: 0 };
+        const points =
+          m.homeScore !== null && m.awayScore !== null
+            ? scoreMatchTip(t.home, t.away, m.homeScore, m.awayScore)
+            : 0;
+        return { text: `${t.home}:${t.away}`, points };
+      },
+    });
+  }
+
+  // --- Pořadí skupin (4 pozice komprimované do 1 buňky) ---
+  for (const g of groupLetters) {
+    const real = groupRankingResultMap.get(g) ?? null;
+    columns.push({
+      key: `gr_${g}`,
+      short: `Sk. ${g}`,
+      sub: "pořadí",
+      real: real ? real.join(" · ") : "—",
+      cell: (userId) => {
+        const tip = groupRankingTipMap.get(`${userId}__${g}`);
+        if (!tip || tip.length < 4) return { text: "—", points: 0 };
+        const points = scoreGroupRanking(tip, real);
+        return { text: tip.join(" · "), points };
+      },
+    });
+  }
+
+  // --- Králové střelců skupin ---
+  for (const g of groupLetters) {
+    const realValue = tournamentResultMap.get(`TOP_SCORER_GROUP_${g}`) ?? null;
+    columns.push({
+      key: `gs_${g}`,
+      short: `Sk. ${g}`,
+      sub: "střelec",
+      real: realValue ?? "—",
+      cell: (userId) => {
+        const tip = specialTipMap.get(`${userId}__TOP_SCORER_GROUP_${g}`);
+        if (!tip) return { text: "—", points: 0 };
+        const points = scorePlayerName(tip, realValue, SCORING.groupScorer);
+        return { text: tip, points };
+      },
+    });
+  }
+
+  // --- Postupy ---
+  for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
+    const real = knockoutResultMap.get(round.stage) ?? null;
+    const pointsPerTeam =
+      SCORING.advancers[round.key as keyof typeof SCORING.advancers];
+    columns.push({
+      key: `adv_${round.key}`,
+      short: round.label,
+      sub: `${pointsPerTeam} b/tým`,
+      real: real ? `${real.length} týmů` : "—",
+      cell: (userId) => {
+        const tip = knockoutTipMap.get(`${userId}__${round.stage}`);
+        if (!tip || tip.length === 0) return { text: "—", points: 0 };
+        const correct = real
+          ? tip.filter((c) => real.includes(c)).length
+          : null;
+        const points = scoreAdvancers(tip, real, pointsPerTeam);
+        const text = correct !== null
+          ? `${tip.length} (✓${correct})`
+          : `${tip.length} týmů`;
+        return { text, points };
+      },
+    });
+  }
+
+  // --- Vítěz turnaje ---
+  {
+    const real = tournamentResultMap.get("TOURNAMENT_WINNER") ?? null;
+    columns.push({
+      key: "winner",
+      short: "Vítěz",
+      sub: "turnaje",
+      real: real ? formatTeamShort(real, teamByCode) : "—",
+      cell: (userId) => {
+        const tip = specialTipMap.get(`${userId}__TOURNAMENT_WINNER`);
+        if (!tip) return { text: "—", points: 0 };
+        const points = scoreTournamentWinner(tip, real);
+        return { text: formatTeamShort(tip, teamByCode), points };
+      },
+    });
+  }
+
+  // --- Král střelců turnaje ---
+  {
+    const real = tournamentResultMap.get("TOP_SCORER_TOURNAMENT") ?? null;
+    columns.push({
+      key: "topscorer",
+      short: "Král střelců",
+      sub: "turnaje",
+      real: real ?? "—",
+      cell: (userId) => {
+        const tip = specialTipMap.get(`${userId}__TOP_SCORER_TOURNAMENT`);
+        if (!tip) return { text: "—", points: 0 };
+        const points = scorePlayerName(
+          tip,
+          real,
+          SCORING.tournamentTopScorer
+        );
+        return { text: tip, points };
+      },
+    });
+  }
+
+  // Spočti řádky (tipéři) + celkové body
+  const tipperRows = users.map((u) => {
+    const cells = columns.map((col) => col.cell(u.id));
+    const total = cells.reduce((sum, c) => sum + c.points, 0);
+    return {
+      userId: u.id,
+      name: u.name ?? u.email,
+      isMe: u.id === currentUserId,
+      cells: cells.map((c, i) => ({
+        key: columns[i].key,
+        text: c.text,
+        points: c.points,
+      })),
+      total,
+    };
+  });
+  // Seřaď podle bodů desc, pak alphabeticky
+  tipperRows.sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    return a.name.localeCompare(b.name, "cs-CZ");
+  });
+
+  return (
+    <div className="flex flex-1 flex-col bg-slate-50 text-slate-900 print:bg-white">
+      {/* Landscape orientation jen pro tuto stránku */}
+      <style>{`@media print { @page { size: A4 landscape; margin: 1cm; } }`}</style>
+
+      <header className="border-b border-slate-200 bg-white print:hidden">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <div>
+            <Link
+              href="/leaderboard"
+              className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
+            >
+              ← Pořadí
+            </Link>
+            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+              Kompletní přehled tipů
+            </h1>
+          </div>
+          <OverviewClient
+            columns={columns.map((c) => ({ key: c.key, short: c.short, sub: c.sub, real: c.real }))}
+            rows={tipperRows}
+          />
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-4 sm:px-6 print:max-w-full print:px-0 print:py-0">
+        <div className="mb-3 hidden print:block">
+          <h1 className="text-xl font-bold tracking-tight">
+            {tournament.name} — Kompletní přehled tipů
+          </h1>
+        </div>
+
+        <p className="mb-3 text-xs text-slate-500 print:hidden">
+          Tabulka je široká — posuň ji vodorovně. První sloupec (jméno) zůstane
+          při scrollování ukotvený.
+        </p>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white print:overflow-visible print:rounded-none print:border-slate-400">
+          <table className="min-w-max text-xs print:text-[8pt]">
+            <thead className="bg-slate-50 print:bg-white">
+              <tr className="border-b border-slate-200 text-left print:border-slate-400">
+                <th className="sticky left-0 z-10 bg-slate-50 px-2 py-2 font-semibold print:bg-white">
+                  Tipér
+                </th>
+                {columns.map((c) => (
+                  <th
+                    key={c.key}
+                    className="border-l border-slate-100 px-2 py-2 font-semibold whitespace-nowrap print:border-slate-300"
+                    title={`${c.short}${c.sub ? " — " + c.sub : ""}`}
+                  >
+                    <div>{c.short}</div>
+                    {c.sub && (
+                      <div className="text-[10px] font-normal text-slate-500 print:text-[6pt]">
+                        {c.sub}
+                      </div>
+                    )}
+                  </th>
+                ))}
+                <th className="sticky right-0 z-10 border-l border-slate-200 bg-slate-50 px-2 py-2 text-right font-semibold print:bg-white">
+                  Body
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 print:divide-slate-300">
+              {/* Skutečné výsledky */}
+              <tr className="bg-amber-50 font-medium print:bg-slate-100">
+                <td className="sticky left-0 z-10 bg-amber-50 px-2 py-2 print:bg-slate-100">
+                  Skutečně
+                </td>
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    className="border-l border-slate-100 px-2 py-2 whitespace-nowrap text-slate-900 print:border-slate-300"
+                    title={c.real}
+                  >
+                    {truncate(c.real, 24)}
+                  </td>
+                ))}
+                <td className="sticky right-0 z-10 border-l border-slate-200 bg-amber-50 px-2 py-2 text-right text-slate-500 print:bg-slate-100">
+                  —
+                </td>
+              </tr>
+
+              {/* Tipy */}
+              {tipperRows.map((row) => (
+                <tr
+                  key={row.userId}
+                  className={row.isMe ? "bg-amber-50/40" : ""}
+                >
+                  <td
+                    className={`sticky left-0 z-10 px-2 py-2 font-medium ${row.isMe ? "bg-amber-50/70" : "bg-white"}`}
+                  >
+                    {row.name}
+                    {row.isMe && (
+                      <span className="ml-1 text-[10px] text-amber-700">
+                        (ty)
+                      </span>
+                    )}
+                  </td>
+                  {row.cells.map((cell) => (
+                    <td
+                      key={cell.key}
+                      className={`border-l border-slate-100 px-2 py-2 whitespace-nowrap print:border-slate-300 ${
+                        cell.points > 0 ? "text-emerald-700" : "text-slate-600"
+                      }`}
+                      title={cell.text}
+                    >
+                      {truncate(cell.text, 24)}
+                    </td>
+                  ))}
+                  <td
+                    className={`sticky right-0 z-10 border-l border-slate-200 px-2 py-2 text-right font-semibold tabular-nums ${row.isMe ? "bg-amber-50/70" : "bg-white"}`}
+                  >
+                    {row.total}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function formatTeamShort(
+  code: string,
+  teamByCode: Map<string, { name: string; flagEmoji: string | null }>
+): string {
+  const t = teamByCode.get(code);
+  if (!t) return code;
+  return t.flagEmoji ? `${t.flagEmoji} ${t.name}` : t.name;
+}
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + "…";
+}
