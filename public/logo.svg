@@ -1,5 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="60" cy="60" r="46" />
-  <path d="M60 14 L74 50 L112 50 L82 72 L94 108 L60 86 L26 108 L38 72 L8 50 L46 50 Z" fill="currentColor" stroke="none" opacity="0.12" />
-  <path d="M60 32 L70 55 L94 55 L75 70 L82 92 L60 78 L38 92 L45 70 L26 55 L50 55 Z" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Stylizovaný fotbalový míč (soccer ball) -->
+  <!-- Bílý korpus -->
+  <circle cx="60" cy="60" r="52" fill="white" stroke="#0f172a" stroke-width="2"/>
+
+  <!-- Tmavé pentagonové prvky -->
+  <g fill="#0f172a">
+    <!-- centrální pentagon -->
+    <polygon points="60,42 75,52 69,69 51,69 45,52"/>
+    <!-- horní -->
+    <polygon points="60,16 70,22 65,42 55,42 50,22"/>
+    <!-- vlevo dole -->
+    <polygon points="14,53 22,52 32,69 23,82 11,72"/>
+    <!-- vpravo dole -->
+    <polygon points="106,53 109,72 97,82 88,69 98,52"/>
+    <!-- dole -->
+    <polygon points="60,82 70,82 76,102 44,102 50,82"/>
+  </g>
+
+  <!-- Spojnice mezi pentagony -->
+  <g stroke="#0f172a" stroke-width="2" stroke-linecap="round">
+    <line x1="50" y1="22" x2="45" y2="52"/>
+    <line x1="70" y1="22" x2="75" y2="52"/>
+    <line x1="45" y1="52" x2="22" y2="52"/>
+    <line x1="75" y1="52" x2="98" y2="52"/>
+    <line x1="51" y1="69" x2="50" y2="82"/>
+    <line x1="69" y1="69" x2="70" y2="82"/>
+    <line x1="32" y1="69" x2="50" y2="82"/>
+    <line x1="88" y1="69" x2="70" y2="82"/>
+  </g>
 </svg>

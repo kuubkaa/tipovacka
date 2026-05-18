@@ -80,16 +80,16 @@ export default async function Home() {
       </header>
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-        <div className="mb-8 inline-flex items-center justify-center rounded-full bg-white/10 p-5 text-white shadow-lg backdrop-blur-sm ring-1 ring-white/20">
-          {/* Logo se bere z /public/logo.svg (viz tournament.config) */}
+        <div className="mb-8 inline-flex items-center justify-center rounded-full bg-white p-3 shadow-xl shadow-black/30 ring-2 ring-amber-400/50">
+          {/* Logo se bere z /public/logo.svg (viz tournament.config).
+              Vyměnit ho lze nahrazením souboru — vše ostatní funguje samo. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={tournament.logoUrl}
             alt={`Logo ${tournament.shortName}`}
             width={72}
             height={72}
-            className="size-16 text-amber-300"
-            style={{ color: "#fbbf24" }}
+            className="size-20"
           />
         </div>
 
