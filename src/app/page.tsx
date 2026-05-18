@@ -80,16 +80,17 @@ export default async function Home() {
       </header>
 
       <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-        <div className="mb-8 inline-flex items-center justify-center rounded-full bg-white p-3 shadow-xl shadow-black/30 ring-2 ring-amber-400/50">
-          {/* Logo se bere z /public/logo.svg (viz tournament.config).
-              Vyměnit ho lze nahrazením souboru — vše ostatní funguje samo. */}
+        <div className="mb-8 inline-flex items-center justify-center rounded-3xl bg-white px-6 py-4 shadow-xl shadow-black/30 ring-2 ring-amber-400/50">
+          {/* Logo se bere z /public/<logoUrl> (viz tournament.config).
+              Vyměnit ho lze nahrazením souboru — vše ostatní funguje samo.
+              `h-28 w-auto` zachovává poměr stran (portrétní logo se nezmáčkne). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={tournament.logoUrl}
             alt={`Logo ${tournament.shortName}`}
-            width={72}
-            height={72}
-            className="size-20"
+            width={120}
+            height={180}
+            className="h-28 w-auto"
           />
         </div>
 

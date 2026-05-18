@@ -11,7 +11,7 @@ export const tournament = {
   year: 2026,
 
   // Cesta k logu v adresáři /public
-  logoUrl: "/logo.svg",
+  logoUrl: "/logo.png",
 
   // Deadline pro odevzdání tipů (po tomto datu se zobrazí tipy všech)
   // Start MS 2026: 11. června 2026, 20:00 SELČ
