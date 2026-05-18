@@ -173,16 +173,15 @@ function MatchRow({
         {matchDateFormatter.format(date)}
       </p>
       {/*
-        Mobile: stack do třech řádků (home / score / away) — celé názvy se vejdou.
-        Tablety + desktop (sm+): vodorovný layout `home | score | away`.
+        Layout: 3 sloupce (Domácí | Skóre | Hostující). Každý tým má
+        vlaječku NAD názvem; dlouhý název se zalomí na další řádek.
+        Funguje stejně na mobilu i na desktopu.
       */}
-      <div className="flex flex-col items-center gap-2 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
         {/* Home team */}
-        <div className="flex w-full min-w-0 items-center gap-2 text-sm font-medium text-slate-900 sm:justify-end">
-          <span className="text-xl leading-none sm:order-2">
-            {match.home.flagEmoji}
-          </span>
-          <span className="truncate sm:order-1 sm:text-right">
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span className="text-2xl leading-none">{match.home.flagEmoji}</span>
+          <span className="text-sm font-medium leading-tight text-slate-900 break-words">
             {match.home.name}
           </span>
         </div>
@@ -217,9 +216,11 @@ function MatchRow({
         </div>
 
         {/* Away team */}
-        <div className="flex w-full min-w-0 items-center gap-2 text-sm font-medium text-slate-900">
-          <span className="text-xl leading-none">{match.away.flagEmoji}</span>
-          <span className="truncate">{match.away.name}</span>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <span className="text-2xl leading-none">{match.away.flagEmoji}</span>
+          <span className="text-sm font-medium leading-tight text-slate-900 break-words">
+            {match.away.name}
+          </span>
         </div>
       </div>
     </li>
