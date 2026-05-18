@@ -37,6 +37,14 @@ export default async function Home() {
                 {session.user.name ?? session.user.email}
               </strong>
             </span>
+            {session.user.isAdmin && (
+              <Link
+                href="/admin"
+                className="rounded-full bg-amber-400/20 px-3 py-1.5 text-xs font-medium text-amber-200 ring-1 ring-amber-300/40 hover:bg-amber-400/30 hover:text-amber-100"
+              >
+                Admin
+              </Link>
+            )}
             <form
               action={async () => {
                 "use server";
