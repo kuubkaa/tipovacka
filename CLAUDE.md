@@ -22,7 +22,7 @@
 - **Font:** Geist Sans / Geist Mono
 - **Databáze:** Vercel Postgres (Neon) — ✅ nasazená (region eu-central-1, free tier)
 - **ORM:** Prisma 7 + `@prisma/adapter-pg` (driver adapter, ne Rust engine)
-- **Auth:** Magic link přes email (Auth.js / NextAuth v5) — **plánováno**
+- **Auth:** Magic link přes email — ✅ Auth.js v5 (beta) + Prisma adapter + Resend provider (sender `onboarding@resend.dev`, dokud nezvolíme vlastní doménu)
 - **Hosting:** Vercel
 - **Kontejnerizace:** Žádná. Pracujeme přímo na hostu (`npm run dev`).
 
@@ -113,12 +113,14 @@ Pokud `NODE_ENV=production`:
 
 ## Plán dalších iterací
 1. ✅ ~~DB + Prisma schema~~ — hotovo (2026-05-17)
-2. **Auth (magic link)** — login přes email (Auth.js v5 + Resend), Account/Session/VerificationToken tabulky
-3. **Seed týmů a zápasů MS 2026** — 48 týmů, 12 skupin, fixture rozpis
-4. **Tipovací formulář** — zápasy ze základní skupiny + speciální tipy (král střelců, vítěz)
-5. **Admin rozhraní** — zadávání reálných výsledků
-6. **Bodování + leaderboard** — automatický výpočet po zadání výsledku
-7. **Vyřazovací pavouk** — odemkne se po skončení skupin (dynamicky podle postupů)
+2. ✅ ~~Auth (magic link)~~ — hotovo (2026-05-18). Auth.js v5 + Resend, ověřeno na preview deploye.
+3. **Profil uživatele** — po prvním sign-inu vyžadovat vyplnění `name` (aktuálně null)
+4. **Resend doména** — ověřit vlastní doménu, ať můžeme posílat pozvánky cizím emailům (zatím free tier dovolí jen jakubmilotinsky@gmail.com)
+5. **Seed týmů a zápasů MS 2026** — 48 týmů, 12 skupin, fixture rozpis
+6. **Tipovací formulář** — zápasy ze základní skupiny + speciální tipy (král střelců, vítěz)
+7. **Admin rozhraní** — zadávání reálných výsledků
+8. **Bodování + leaderboard** — automatický výpočet po zadání výsledku
+9. **Vyřazovací pavouk** — odemkne se po skončení skupin (dynamicky podle postupů)
 
 ## Nuance projektu
 - Tipy se počítají podle blízkosti k reálnému výsledku (přesný výsledek > správný vítěz a rozdíl > jen správný vítěz).
@@ -130,6 +132,8 @@ Pokud `NODE_ENV=production`:
 - **2026-05-17:** Reusabilita řešena přes `src/config/tournament.ts` (jeden soubor = jedna pravda o brandingu).
 - **2026-05-17:** Prisma 7 — connection string je v `prisma.config.ts` (ne v schema.prisma) + runtime jde přes `@prisma/adapter-pg` (driver adapter). Důvod: Prisma 7 odstranila `url` z datasource bloku a oddělila migrace od runtime.
 - **2026-05-17:** Neon DB bez Neon Auth — chceme vlastní Auth.js, ne vendor-lock-in. Lze kdykoliv zapnout, pokud bychom změnili názor.
+- **2026-05-18:** Auth.js v5 (beta) zvolen místo Neon Auth. Env vars na Vercelu: `AUTH_SECRET`, `AUTH_RESEND_KEY` (Auth.js si je najde automaticky podle konvence `AUTH_<PROVIDER>_KEY`). V dev modu se magic link loguje do terminálu — Resend se používá jen v produkci.
+- **2026-05-18:** Resend sender zatím `onboarding@resend.dev` (free tier bez vlastní domény). Pošle se jen na email registrovaný v Resendu. Pro pozvánky cizím adresám musíme ověřit vlastní doménu.
 
 ## Údržba tohoto souboru
 - Aktualizuj po každé strukturální změně, novém pravidlu nebo rozhodnutí
