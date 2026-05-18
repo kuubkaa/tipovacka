@@ -93,7 +93,7 @@ export function GroupRankingsForm({
         ))}
       </div>
 
-      <div className="sticky bottom-0 -mx-6 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm text-slate-600">
             {state?.status === "ok" && (
@@ -166,7 +166,7 @@ function GroupCard({
           return (
             <div
               key={fieldName}
-              className="grid grid-cols-[80px_1fr] items-center gap-3"
+              className="grid grid-cols-[92px_1fr] items-center gap-3"
             >
               <label
                 htmlFor={fieldName}

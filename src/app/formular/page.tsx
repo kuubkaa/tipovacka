@@ -145,25 +145,30 @@ export default async function FormularPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4">
-          <div>
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="min-w-0">
             <a
               href="/"
               className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
             >
               ← {tournament.shortName}
             </a>
-            <h1 className="text-xl font-bold tracking-tight">Vyplnit tipy</h1>
+            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+              Vyplnit tipy
+            </h1>
           </div>
-          <div className="text-right text-xs text-slate-500">
-            <p>Přihlášen jako</p>
-            <p className="font-medium text-slate-700">
+          <div className="min-w-0 text-right text-xs text-slate-500">
+            <p className="hidden sm:block">Přihlášen jako</p>
+            <p
+              className="truncate font-medium text-slate-700"
+              title={session.user.email ?? ""}
+            >
               {session.user.name ?? session.user.email}
             </p>
           </div>
         </div>
         <nav className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex w-full max-w-3xl gap-4 px-6 py-2 text-sm">
+          <div className="mx-auto flex w-full max-w-3xl gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
             <a
               href="#poradi-skupin"
               className="text-slate-600 hover:text-slate-900"
@@ -186,7 +191,7 @@ export default async function FormularPage() {
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <div
           className={`mb-6 rounded-lg border p-4 text-sm ${
             deadlinePassed

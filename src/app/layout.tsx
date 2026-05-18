@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { tournament } from "@/config/tournament";
@@ -16,6 +16,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: tournament.name,
   description: tournament.subtitle,
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Telefony nemají vždy 100vh predikovatelně, viewport-fit cover pomáhá
+  // notchům na iOS.
+  viewportFit: "cover",
+  // Brand barva pro browser chrome (Android adresní řádek)
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({

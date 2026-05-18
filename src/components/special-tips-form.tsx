@@ -143,11 +143,12 @@ export function SpecialTipsForm({
                       return (
                         <label
                           key={t.code}
+                          title={t.name}
                           className={cn(
-                            "flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                            "flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
                             selected
                               ? "border-slate-900 bg-slate-900 text-white"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-400",
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-100",
                             disabled && "cursor-not-allowed opacity-60"
                           )}
                         >
@@ -161,7 +162,10 @@ export function SpecialTipsForm({
                           <span className="text-sm leading-none">
                             {t.flagEmoji}
                           </span>
-                          <span className="truncate">{t.name}</span>
+                          <span className="truncate">
+                            <span className="sm:hidden">{t.code}</span>
+                            <span className="hidden sm:inline">{t.name}</span>
+                          </span>
                         </label>
                       );
                     })}
@@ -229,7 +233,7 @@ export function SpecialTipsForm({
         </div>
       </section>
 
-      <div className="sticky bottom-0 -mx-6 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm text-slate-600">
             {state?.status === "ok" && (

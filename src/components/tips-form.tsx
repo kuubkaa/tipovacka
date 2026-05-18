@@ -113,7 +113,7 @@ export function TipsForm({
       ))}
 
       {/* Sticky save bar */}
-      <div className="sticky bottom-0 -mx-6 border-t border-slate-200 bg-white/95 px-6 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm text-slate-600">
             {state?.status === "ok" && (
@@ -168,14 +168,17 @@ function MatchRow({
   const homeKey = `home_${match.id}`;
   const awayKey = `away_${match.id}`;
   return (
-    <li className="px-4 py-3">
+    <li className="px-3 py-3 sm:px-4">
       <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
         {matchDateFormatter.format(date)}
       </p>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        {/* Home team */}
-        <div className="flex items-center justify-end gap-2 text-sm font-medium text-slate-900">
-          <span className="text-right">{match.home.name}</span>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+        {/* Home team — code on mobile, full name on sm+ */}
+        <div className="flex min-w-0 items-center justify-end gap-2 text-sm font-medium text-slate-900">
+          <span className="truncate text-right">
+            <span className="sm:hidden">{match.home.code}</span>
+            <span className="hidden sm:inline">{match.home.name}</span>
+          </span>
           <span className="text-xl leading-none">{match.home.flagEmoji}</span>
         </div>
 
@@ -208,10 +211,13 @@ function MatchRow({
           />
         </div>
 
-        {/* Away team */}
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
+        {/* Away team — code on mobile, full name on sm+ */}
+        <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-slate-900">
           <span className="text-xl leading-none">{match.away.flagEmoji}</span>
-          <span>{match.away.name}</span>
+          <span className="truncate">
+            <span className="sm:hidden">{match.away.code}</span>
+            <span className="hidden sm:inline">{match.away.name}</span>
+          </span>
         </div>
       </div>
     </li>
