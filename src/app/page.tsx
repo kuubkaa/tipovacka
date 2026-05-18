@@ -10,6 +10,7 @@ const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Prague",
 });
 
 export default async function Home() {

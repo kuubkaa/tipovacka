@@ -20,6 +20,7 @@ const matchDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   month: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Prague",
 });
 const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
@@ -27,6 +28,7 @@ const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Prague",
 });
 
 const STAGE_TO_KEY: Record<string, "R32" | "R16" | "QF" | "SF" | "F"> = {

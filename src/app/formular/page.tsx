@@ -19,6 +19,7 @@ const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Prague",
 });
 
 const KNOCKOUT_ORDER: Record<string, { idx: number; label: string }> = {

@@ -16,6 +16,7 @@ const matchDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   month: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/Prague",
 });
 
 const scoreInputClass =
