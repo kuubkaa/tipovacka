@@ -168,7 +168,7 @@ export default async function FormularPage() {
           </div>
         </div>
         <nav className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex w-full max-w-3xl gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
+          <div className="mx-auto flex w-full max-w-3xl items-center gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
             <a
               href="#poradi-skupin"
               className="text-slate-600 hover:text-slate-900"
@@ -186,6 +186,12 @@ export default async function FormularPage() {
               className="text-slate-600 hover:text-slate-900"
             >
               Výsledky zápasů
+            </a>
+            <a
+              href="/leaderboard"
+              className="ml-auto text-amber-700 hover:text-amber-900"
+            >
+              🏆 Pořadí
             </a>
           </div>
         </nav>

@@ -37,6 +37,12 @@ export default async function Home() {
                 {session.user.name ?? session.user.email}
               </strong>
             </span>
+            <Link
+              href="/leaderboard"
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
+            >
+              Pořadí
+            </Link>
             {session.user.isAdmin && (
               <Link
                 href="/admin"
