@@ -133,8 +133,9 @@ export default async function LeaderboardPage() {
           </p>
           <p>
             <strong className="text-slate-700">Postupy</strong> (R32 · R16 ·
-            ČF · SF · F): {SCORING.advancers.R32} · {SCORING.advancers.R16} ·{" "}
-            {SCORING.advancers.QF} · {SCORING.advancers.SF} ·{" "}
+            ČF · SF · 3. místo · F): {SCORING.advancers.R32} ·{" "}
+            {SCORING.advancers.R16} · {SCORING.advancers.QF} ·{" "}
+            {SCORING.advancers.SF} · {SCORING.advancers.BRONZ} ·{" "}
             {SCORING.advancers.F} za tým
           </p>
           <p>

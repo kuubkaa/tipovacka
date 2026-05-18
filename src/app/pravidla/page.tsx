@@ -105,6 +105,11 @@ export default function PravidlaPage() {
                 points={SCORING.advancers.SF}
               />
               <Row
+                label="O 3. místo"
+                example="2 týmy (poražení ze SF) × bodů za tým"
+                points={SCORING.advancers.BRONZ}
+              />
+              <Row
                 label="Finále"
                 example="2 týmy × bodů za tým"
                 points={SCORING.advancers.F}
@@ -194,6 +199,7 @@ function totalMax(): number {
     16 * SCORING.advancers.R16 +
     8 * SCORING.advancers.QF +
     4 * SCORING.advancers.SF +
+    2 * SCORING.advancers.BRONZ +
     2 * SCORING.advancers.F;
   const specialMax =
     SCORING.tournamentWinner + SCORING.tournamentTopScorer;

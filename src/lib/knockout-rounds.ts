@@ -11,6 +11,7 @@ export const KNOCKOUT_ADVANCERS_ROUNDS = [
   { key: "R16", stage: "ROUND_OF_16" as const, targetCount: 16, label: "Osmifinále" },
   { key: "QF", stage: "QUARTER_FINAL" as const, targetCount: 8, label: "Čtvrtfinále" },
   { key: "SF", stage: "SEMI_FINAL" as const, targetCount: 4, label: "Semifinále" },
+  { key: "BRONZ", stage: "THIRD_PLACE" as const, targetCount: 2, label: "O 3. místo" },
   { key: "F", stage: "FINAL" as const, targetCount: 2, label: "Finále" },
 ] as const;
 
