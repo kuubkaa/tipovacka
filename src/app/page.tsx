@@ -31,12 +31,17 @@ export default async function Home() {
       <header className="relative z-10 flex items-center justify-end px-6 py-4 text-sm">
         {session?.user ? (
           <div className="flex items-center gap-3 text-white/80">
-            <span className="hidden sm:inline">
-              Přihlášen jako{" "}
-              <strong className="text-white">
-                {session.user.name ?? session.user.email}
-              </strong>
-            </span>
+            <Link
+              href="/profil"
+              className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
+              title="Upravit profil"
+            >
+              {session.user.name ? (
+                <>👤 {session.user.name}</>
+              ) : (
+                <span className="text-amber-200">Doplň jméno</span>
+              )}
+            </Link>
             <Link
               href="/leaderboard"
               className="rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
