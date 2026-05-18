@@ -114,7 +114,13 @@ export async function saveTipsAction(
 // =============================================================================
 
 export type SaveGroupRankingsResult =
-  | { status: "ok"; saved: number; skipped: string[] }
+  | {
+      status: "ok";
+      saved: number;
+      skipped: string[];
+      scorersSaved: number;
+      scorersDeleted: number;
+    }
   | { status: "deadline" }
   | { status: "unauth" }
   | { status: "error"; message: string };
@@ -194,10 +200,28 @@ export async function saveGroupRankingsAction(
     saved++;
   }
 
-  // Klient drží user-picked hodnoty v useState a po úspěšném save je
-  // přemaže tím, co server potvrdil. Revalidaci stránky řešíme až při
-  // přechodu jinam (uživatel může F5 udělat sám pro hard sync).
-  return { status: "ok", saved, skipped };
+  // --- Králové střelců skupin (sdílí stejný form a save button) ---
+  let scorersSaved = 0;
+  let scorersDeleted = 0;
+  for (const group of GROUP_LETTERS) {
+    const raw = formData.get(`group_${group}_scorer`);
+    const value = typeof raw === "string" ? raw.trim() : "";
+    const type = `TOP_SCORER_GROUP_${group}`;
+    if (value === "") {
+      const res = await db.specialTip.deleteMany({ where: { userId, type } });
+      scorersDeleted += res.count;
+      continue;
+    }
+    if (value.length > 80) continue;
+    await db.specialTip.upsert({
+      where: { userId_type: { userId, type } },
+      create: { userId, type, value },
+      update: { value },
+    });
+    scorersSaved++;
+  }
+
+  return { status: "ok", saved, skipped, scorersSaved, scorersDeleted };
 }
 
 // =============================================================================
@@ -219,10 +243,11 @@ export type SaveSpecialTipsResult =
 // KNOCKOUT_ADVANCERS_ROUNDS bydlí v src/lib/knockout-rounds.ts (sdílené
 // mezi serverem a klientem; nesmí být v "use server" souboru).
 
+// Pozn: TOP_SCORER_GROUP_<X> se ukládají v saveGroupRankingsAction
+// (jsou v UI vedle pořadí dané skupiny). Tato action je nesahá.
 const SPECIAL_TIP_TYPES = [
   "TOURNAMENT_WINNER",
   "TOP_SCORER_TOURNAMENT",
-  ...GROUP_LETTERS.map((g) => `TOP_SCORER_GROUP_${g}` as const),
 ] as const;
 
 const PLAYER_NAME_MAX = 80;

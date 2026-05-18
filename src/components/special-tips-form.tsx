@@ -29,21 +29,11 @@ export interface SpecialTipsData {
   existingAdvancers: Record<string, string[]>;
 }
 
-const GROUP_LETTERS = [
-  "A", "B", "C", "D", "E", "F",
-  "G", "H", "I", "J", "K", "L",
-] as const;
-
 function initialValues(data: SpecialTipsData): Record<string, string> {
-  const init: Record<string, string> = {
+  return {
     special_TOURNAMENT_WINNER: data.existing["TOURNAMENT_WINNER"] ?? "",
     special_TOP_SCORER_TOURNAMENT: data.existing["TOP_SCORER_TOURNAMENT"] ?? "",
   };
-  for (const g of GROUP_LETTERS) {
-    init[`special_TOP_SCORER_GROUP_${g}`] =
-      data.existing[`TOP_SCORER_GROUP_${g}`] ?? "";
-  }
-  return init;
 }
 
 function initialAdvancers(
@@ -236,44 +226,6 @@ export function SpecialTipsForm({
             maxLength={80}
             className={cn(inputClass)}
           />
-        </div>
-      </section>
-
-      {/* Králové střelců skupin */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <header className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-          <h2 className="text-sm font-semibold tracking-wide text-slate-700">
-            Králové střelců skupin
-          </h2>
-        </header>
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-          {GROUP_LETTERS.map((g) => {
-            const key = `special_TOP_SCORER_GROUP_${g}`;
-            return (
-              <div
-                key={g}
-                className="grid grid-cols-[80px_1fr] items-center gap-3"
-              >
-                <label
-                  htmlFor={key}
-                  className="text-xs font-medium text-slate-500"
-                >
-                  Skupina {g}
-                </label>
-                <input
-                  id={key}
-                  type="text"
-                  name={key}
-                  value={values[key] ?? ""}
-                  onChange={(e) => update(key, e.target.value)}
-                  disabled={disabled}
-                  placeholder="Jméno hráče"
-                  maxLength={80}
-                  className={cn(inputClass)}
-                />
-              </div>
-            );
-          })}
         </div>
       </section>
 

@@ -106,6 +106,12 @@ export default async function FormularPage() {
     teamsByGroup.set(t.group, list);
   }
   const rankingByGroup = new Map(rankings.map((r) => [r.group, r.teamCodes]));
+  // Mapa group letter -> jméno hráče (král střelců skupiny) z SpecialTip
+  const scorerByGroup = new Map<string, string>();
+  for (const st of specialTips) {
+    const m = st.type.match(/^TOP_SCORER_GROUP_([A-L])$/);
+    if (m) scorerByGroup.set(m[1], st.value);
+  }
   const rankingGroups: GroupRankingData[] = Array.from(teamsByGroup.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([group, ts]) => ({
@@ -116,6 +122,7 @@ export default async function FormularPage() {
         flagEmoji: t.flagEmoji,
       })),
       existingRanking: rankingByGroup.get(group as never) ?? null,
+      existingScorer: scorerByGroup.get(group) ?? null,
     }));
 
   // --- Speciální tipy: připravit data pro form ---
@@ -208,8 +215,8 @@ export default async function FormularPage() {
               Pořadí skupin
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              U každé skupiny vyber, kdo skončí na 1.–4. místě. Každý tým můžeš
-              v dané skupině zvolit jen jednou.
+              U každé skupiny vyber, kdo skončí na 1.–4. místě, a tipni jejího
+              krále střelců. Každý tým můžeš v dané skupině zvolit jen jednou.
             </p>
           </div>
           <GroupRankingsForm
@@ -223,8 +230,8 @@ export default async function FormularPage() {
           <div className="mb-4">
             <h2 className="text-lg font-bold tracking-tight">Speciální tipy</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Postupující do vyřazovacích kol, vítěz turnaje a králové střelců.
-              Pole můžeš nechat prázdná — uloží se jen to, co vyplníš.
+              Postupující do vyřazovacích kol, vítěz turnaje a král střelců
+              celého turnaje. Pole můžeš nechat prázdná — uloží se jen vyplněná.
             </p>
           </div>
           <SpecialTipsForm data={specialTipsData} disabled={deadlinePassed} />

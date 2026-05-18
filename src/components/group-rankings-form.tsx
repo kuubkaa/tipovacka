@@ -24,13 +24,15 @@ export interface GroupRankingData {
   teams: TeamRef[];
   /// Existující tip — ordered pole 4 team kódů od 1. do 4. místa
   existingRanking: string[] | null;
+  /// Existující tip na krále střelců skupiny (jméno hráče, free text)
+  existingScorer: string | null;
 }
 
 const POSITION_LABELS = ["1. místo", "2. místo", "3. místo", "4. místo"] as const;
 
 /**
- * Sestaví flat klíč -> hodnota mapu z všech skupin (init z props).
- * Klíč = `group_<X>_pos<1-4>`, hodnota = team code nebo "".
+ * Sestaví flat klíč -> hodnota mapu pro pozice (1.–4.) + krále střelců.
+ * Klíče: `group_<X>_pos<1-4>` a `group_<X>_scorer`.
  */
 function initialPicks(groups: GroupRankingData[]): Record<string, string> {
   const init: Record<string, string> = {};
@@ -39,6 +41,7 @@ function initialPicks(groups: GroupRankingData[]): Record<string, string> {
       const key = `group_${g.group}_pos${i + 1}`;
       init[key] = g.existingRanking?.[i] ?? "";
     }
+    init[`group_${g.group}_scorer`] = g.existingScorer ?? "";
   }
   return init;
 }
@@ -190,6 +193,29 @@ function GroupCard({
             </div>
           );
         })}
+
+        {/* Král střelců skupiny */}
+        <div className="mt-3 grid grid-cols-[80px_1fr] items-center gap-3 border-t border-slate-100 pt-3">
+          <label
+            htmlFor={`group_${group.group}_scorer`}
+            className="text-xs font-medium text-slate-500"
+          >
+            Král střelců
+          </label>
+          <input
+            id={`group_${group.group}_scorer`}
+            type="text"
+            name={`group_${group.group}_scorer`}
+            value={picks[`group_${group.group}_scorer`] ?? ""}
+            onChange={(e) =>
+              onPick(`group_${group.group}_scorer`, e.target.value)
+            }
+            disabled={disabled}
+            placeholder="Jméno hráče"
+            maxLength={80}
+            className={cn(selectClass)}
+          />
+        </div>
       </div>
     </section>
   );
