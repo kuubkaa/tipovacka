@@ -492,3 +492,130 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+// =============================================================================
+// Vyřazovací pavouk — admin přidává konkrétní páry zápasů
+// =============================================================================
+
+export type SaveKnockoutFixturesResult =
+  | {
+      status: "ok";
+      saved: number;
+      skipped: number;
+    }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+const KNOCKOUT_STAGES = [
+  { stage: "ROUND_OF_32" as const, count: 16, prefix: "R32" },
+  { stage: "ROUND_OF_16" as const, count: 8, prefix: "R16" },
+  { stage: "QUARTER_FINAL" as const, count: 4, prefix: "QF" },
+  { stage: "SEMI_FINAL" as const, count: 2, prefix: "SF" },
+  { stage: "FINAL" as const, count: 1, prefix: "F" },
+] as const;
+
+/**
+ * Uloží/aktualizuje konkrétní zápasy vyřazovací fáze.
+ *
+ * FormData formát per zápas:
+ *   match_<prefix>-<index>_home  = team code
+ *   match_<prefix>-<index>_away  = team code
+ *   match_<prefix>-<index>_date  = ISO datetime-local (např. "2026-06-28T21:00")
+ *
+ * Prefix = R32/R16/QF/SF/F, index = 1..N. Pokud má zápas všechna tři
+ * pole vyplněná a oba team kódy jsou platné, upsertne Match. Pokud
+ * jsou všechna pole prázdná, smaže existující záznam.
+ */
+export async function saveKnockoutFixturesAction(
+  _prev: SaveKnockoutFixturesResult | null,
+  formData: FormData
+): Promise<SaveKnockoutFixturesResult> {
+  const session = await requireAdminSession();
+  if (!session) return { status: "forbidden" };
+
+  const validTeamCodes = new Set(
+    (await db.team.findMany({ select: { code: true } })).map((t) => t.code)
+  );
+
+  // Načti existující knockout zápasy do mapy pro update vs. create rozhodnutí
+  const existing = await db.match.findMany({
+    where: {
+      stage: { in: KNOCKOUT_STAGES.map((k) => k.stage) },
+    },
+    select: { matchKey: true, id: true },
+  });
+  const existingByKey = new Map(existing.map((m) => [m.matchKey, m.id]));
+
+  let saved = 0;
+  let skipped = 0;
+
+  for (const round of KNOCKOUT_STAGES) {
+    for (let i = 1; i <= round.count; i++) {
+      const key = `${round.prefix}-${i}`;
+      const homeRaw = formData.get(`match_${key}_home`);
+      const awayRaw = formData.get(`match_${key}_away`);
+      const dateRaw = formData.get(`match_${key}_date`);
+      const home = typeof homeRaw === "string" ? homeRaw.trim() : "";
+      const away = typeof awayRaw === "string" ? awayRaw.trim() : "";
+      const dateStr = typeof dateRaw === "string" ? dateRaw.trim() : "";
+
+      const allEmpty = home === "" && away === "" && dateStr === "";
+      if (allEmpty) {
+        // Smaž existující záznam, pokud byl (admin uklízí)
+        const existId = existingByKey.get(key);
+        if (existId) {
+          await db.match.delete({ where: { id: existId } });
+        }
+        continue;
+      }
+
+      // Validace
+      if (!validTeamCodes.has(home) || !validTeamCodes.has(away)) {
+        skipped++;
+        continue;
+      }
+      if (home === away) {
+        skipped++;
+        continue;
+      }
+      const dateUtc = new Date(dateStr);
+      if (isNaN(dateUtc.getTime())) {
+        skipped++;
+        continue;
+      }
+
+      const homeTeam = await db.team.findUnique({
+        where: { code: home },
+        select: { id: true },
+      });
+      const awayTeam = await db.team.findUnique({
+        where: { code: away },
+        select: { id: true },
+      });
+      if (!homeTeam || !awayTeam) {
+        skipped++;
+        continue;
+      }
+
+      await db.match.upsert({
+        where: { matchKey: key },
+        create: {
+          matchKey: key,
+          stage: round.stage,
+          dateUtc,
+          homeTeamId: homeTeam.id,
+          awayTeamId: awayTeam.id,
+        },
+        update: {
+          dateUtc,
+          homeTeamId: homeTeam.id,
+          awayTeamId: awayTeam.id,
+        },
+      });
+      saved++;
+    }
+  }
+
+  return { status: "ok", saved, skipped };
+}

@@ -38,15 +38,15 @@ interface MatchData {
   awayScore: number | null;
 }
 
-interface GroupData {
-  group: string;
+export interface SectionData {
+  label: string;
   matches: MatchData[];
 }
 
-function initialScores(groups: GroupData[]): Record<string, string> {
+function initialScores(sections: SectionData[]): Record<string, string> {
   const init: Record<string, string> = {};
-  for (const g of groups) {
-    for (const m of g.matches) {
+  for (const s of sections) {
+    for (const m of s.matches) {
       init[`home_${m.id}`] = m.homeScore?.toString() ?? "";
       init[`away_${m.id}`] = m.awayScore?.toString() ?? "";
     }
@@ -54,9 +54,9 @@ function initialScores(groups: GroupData[]): Record<string, string> {
   return init;
 }
 
-export function MatchResultsForm({ groups }: { groups: GroupData[] }) {
+export function MatchResultsForm({ sections }: { sections: SectionData[] }) {
   const [scores, setScores] = useState<Record<string, string>>(() =>
-    initialScores(groups)
+    initialScores(sections)
   );
   const [state, setState] = useState<SaveMatchResultsResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -80,18 +80,18 @@ export function MatchResultsForm({ groups }: { groups: GroupData[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {groups.map((g) => (
+      {sections.map((s) => (
         <section
-          key={g.group}
+          key={s.label}
           className="overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
           <header className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
             <h2 className="text-sm font-semibold tracking-wide text-slate-700">
-              Skupina {g.group}
+              {s.label}
             </h2>
           </header>
           <ul className="divide-y divide-slate-100">
-            {g.matches.map((m) => (
+            {s.matches.map((m) => (
               <MatchRow
                 key={m.id}
                 match={m}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  GitFork,
   ListChecks,
   Mail,
   Medal,
@@ -23,6 +24,7 @@ export default async function AdminPage() {
     specialResultsCount,
     groupScorersCount,
     userCount,
+    knockoutMatchesCount,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -37,9 +39,23 @@ export default async function AdminPage() {
       where: { type: { startsWith: "TOP_SCORER_GROUP_" } },
     }),
     db.user.count(),
+    db.match.count({
+      where: {
+        stage: {
+          in: [
+            "ROUND_OF_32",
+            "ROUND_OF_16",
+            "QUARTER_FINAL",
+            "SEMI_FINAL",
+            "FINAL",
+          ],
+        },
+      },
+    }),
   ]);
 
   const remaining = totalMatches - playedMatches;
+  const TOTAL_KNOCKOUT = 16 + 8 + 4 + 2 + 1; // R32 + R16 + QF + SF + F = 31
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
@@ -102,6 +118,22 @@ export default async function AdminPage() {
             icon={<Trophy className="size-5 text-amber-600" />}
             title="Speciální výsledky"
             summary={<>{specialResultsCount} / 2 (vítěz + král střelců)</>}
+          />
+
+          <AdminCard
+            href="/admin/pavouk"
+            icon={<GitFork className="size-5 text-violet-600" />}
+            title="Vyřazovací pavouk"
+            summary={
+              <>
+                {knockoutMatchesCount} / {TOTAL_KNOCKOUT} zápasů
+                {knockoutMatchesCount === 0 && (
+                  <span className="ml-1 text-slate-500">
+                    (doplň po skupinách)
+                  </span>
+                )}
+              </>
+            }
           />
 
           <AdminCard

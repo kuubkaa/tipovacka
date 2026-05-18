@@ -12,8 +12,13 @@ const GROUP_LETTERS = [
 type GroupLetter = (typeof GROUP_LETTERS)[number];
 
 export type SaveTipsResult =
-  | { status: "ok"; saved: number }
-  | { status: "deadline" }
+  | {
+      status: "ok";
+      saved: number;
+      /** Počet tipů přeskočených kvůli uzamčenému zápasu
+       *  (global deadline u skupin, výkop u vyřazovací fáze). */
+      lockedSkipped: number;
+    }
   | { status: "unauth" }
   | { status: "error"; message: string };
 
@@ -36,11 +41,9 @@ export async function saveTipsAction(
     return { status: "unauth" };
   }
 
-  if (isDeadlinePassed()) {
-    return { status: "deadline" };
-  }
-
   const userId = session.user.id;
+  const now = new Date();
+  const globalDeadlinePassed = isDeadlinePassed(now);
 
   // Posbírej páry (matchId, home, away) z FormData
   const updates: Array<{ matchId: string; home: number; away: number }> = [];
@@ -57,7 +60,6 @@ export async function saveTipsAction(
     const homeStr = raw.trim();
     const awayStr = (formData.get(`away_${matchId}`) ?? "").toString().trim();
 
-    // Oba prázdné → nic neděláme (tip se neukládá)
     if (homeStr === "" && awayStr === "") continue;
 
     const home = Number(homeStr);
@@ -70,23 +72,34 @@ export async function saveTipsAction(
       home > 20 ||
       away > 20
     ) {
-      // Neúplný nebo nesmyslný tip — přeskoč. (Klient by měl validovat dopředu.)
       continue;
     }
     updates.push({ matchId, home, away });
   }
 
-  // Ověř, že všechna matchId existují a jsou GROUP-fáze
+  // Načti dotčené matche se stage + dateUtc kvůli deadline kontrole
   const matchIds = updates.map((u) => u.matchId);
   const validMatches = await db.match.findMany({
-    where: { id: { in: matchIds }, stage: "GROUP" },
-    select: { id: true },
+    where: { id: { in: matchIds } },
+    select: { id: true, stage: true, dateUtc: true },
   });
-  const validIds = new Set(validMatches.map((m) => m.id));
+  const matchById = new Map(validMatches.map((m) => [m.id, m]));
 
   let saved = 0;
+  let lockedSkipped = 0;
   for (const u of updates) {
-    if (!validIds.has(u.matchId)) continue;
+    const m = matchById.get(u.matchId);
+    if (!m) continue; // Neznámý zápas
+
+    // Skupinová fáze: locknuté globálním deadlinem.
+    // Vyřazovací: každý zápas má vlastní deadline = výkop.
+    const locked =
+      m.stage === "GROUP" ? globalDeadlinePassed : now >= m.dateUtc;
+    if (locked) {
+      lockedSkipped++;
+      continue;
+    }
+
     await db.tip.upsert({
       where: { userId_matchId: { userId, matchId: u.matchId } },
       create: {
@@ -103,10 +116,7 @@ export async function saveTipsAction(
     saved++;
   }
 
-  // Klient drží user-picked hodnoty v useState a po úspěšném save je
-  // přemaže tím, co server potvrdil. Revalidaci stránky řešíme až při
-  // přechodu jinam (uživatel může F5 udělat sám pro hard sync).
-  return { status: "ok", saved };
+  return { status: "ok", saved, lockedSkipped };
 }
 
 // =============================================================================

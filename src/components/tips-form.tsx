@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Lock } from "lucide-react";
 
 import { saveTipsAction, type SaveTipsResult } from "@/app/formular/actions";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,10 @@ import { cn } from "@/lib/utils";
 const scoreInputClass =
   "h-10 w-12 rounded-lg border border-slate-300 bg-white px-1 text-center text-base font-medium text-slate-900 tabular-nums outline-none transition-colors focus-visible:border-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";
 
-/** Sestaví klíč -> hodnota mapu pro všechny home_<id>/away_<id> inputy. */
-function initialScores(groups: GroupData[]): Record<string, string> {
+function initialScores(sections: SectionData[]): Record<string, string> {
   const init: Record<string, string> = {};
-  for (const g of groups) {
-    for (const m of g.matches) {
+  for (const s of sections) {
+    for (const m of s.matches) {
       init[`home_${m.id}`] = m.existingTip?.homeScore?.toString() ?? "";
       init[`away_${m.id}`] = m.existingTip?.awayScore?.toString() ?? "";
     }
@@ -45,25 +44,19 @@ interface MatchData {
   home: TeamRef;
   away: TeamRef;
   existingTip: { homeScore: number; awayScore: number } | null;
+  /// Per-zápas zámek (true pokud už nelze tipovat — výkop proběhl
+  /// nebo skupinový global deadline uplynul).
+  locked: boolean;
 }
 
-interface GroupData {
-  group: string;
+export interface SectionData {
+  label: string;
   matches: MatchData[];
 }
 
-export function TipsForm({
-  groups,
-  disabled,
-}: {
-  groups: GroupData[];
-  disabled: boolean;
-}) {
-  // Controlled state + manuální submit přes useTransition.
-  // Viz GroupRankingsForm — useActionState + revalidatePath dělá v React 19
-  // restart client komponenty a useState by se po každém save přemazal.
+export function TipsForm({ sections }: { sections: SectionData[] }) {
   const [scores, setScores] = useState<Record<string, string>>(() =>
-    initialScores(groups)
+    initialScores(sections)
   );
   const [state, setState] = useState<SaveTipsResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -74,7 +67,7 @@ export function TipsForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (disabled || pending) return;
+    if (pending) return;
     const formData = new FormData();
     for (const [k, v] of Object.entries(scores)) {
       formData.append(k, v);
@@ -85,25 +78,27 @@ export function TipsForm({
     });
   }
 
+  // Aspoň jeden zápas musí být editovatelný, jinak nemá save button smysl
+  const anyEditable = sections.some((s) => s.matches.some((m) => !m.locked));
+
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {groups.map((g) => (
+      {sections.map((s) => (
         <section
-          key={g.group}
+          key={s.label}
           className="overflow-hidden rounded-xl border border-slate-200 bg-white"
         >
           <header className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
             <h2 className="text-sm font-semibold tracking-wide text-slate-700">
-              Skupina {g.group}
+              {s.label}
             </h2>
           </header>
 
           <ul className="divide-y divide-slate-100">
-            {g.matches.map((m) => (
+            {s.matches.map((m) => (
               <MatchRow
                 key={m.id}
                 match={m}
-                disabled={disabled}
                 scores={scores}
                 onChange={update}
               />
@@ -112,17 +107,18 @@ export function TipsForm({
         </section>
       ))}
 
-      {/* Sticky save bar */}
       <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm text-slate-600">
             {state?.status === "ok" && (
               <span className="inline-flex items-center gap-1.5 text-emerald-700">
                 <Check className="size-4" /> Uloženo {state.saved} tipů
+                {state.lockedSkipped > 0 && (
+                  <span className="ml-2 text-amber-700">
+                    ({state.lockedSkipped} uzamčeno — deadline / výkop)
+                  </span>
+                )}
               </span>
-            )}
-            {state?.status === "deadline" && (
-              <span className="text-rose-700">Deadline uplynul, nejde uložit.</span>
             )}
             {state?.status === "unauth" && (
               <span className="text-rose-700">Nejsi přihlášen.</span>
@@ -133,7 +129,7 @@ export function TipsForm({
           </div>
           <Button
             type="submit"
-            disabled={disabled || pending}
+            disabled={!anyEditable || pending}
             className="h-10 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
           >
             {pending ? (
@@ -141,8 +137,8 @@ export function TipsForm({
                 <Loader2 className="mr-1.5 size-4 animate-spin" />
                 Ukládám…
               </>
-            ) : disabled ? (
-              "Tipy uzamčené"
+            ) : !anyEditable ? (
+              "Vše uzamčené"
             ) : (
               "Uložit tipy"
             )}
@@ -155,12 +151,10 @@ export function TipsForm({
 
 function MatchRow({
   match,
-  disabled,
   scores,
   onChange,
 }: {
   match: MatchData;
-  disabled: boolean;
   scores: Record<string, string>;
   onChange: (key: string, value: string) => void;
 }) {
@@ -169,24 +163,24 @@ function MatchRow({
   const awayKey = `away_${match.id}`;
   return (
     <li className="px-3 py-3 sm:px-4">
-      <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
-        {matchDateFormatter.format(date)}
-      </p>
-      {/*
-        Layout: 3 sloupce (Domácí | Skóre | Hostující). Každý tým má
-        vlaječku NAD názvem; dlouhý název se zalomí na další řádek.
-        Funguje stejně na mobilu i na desktopu.
-      */}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[11px] uppercase tracking-wide text-slate-400">
+          {matchDateFormatter.format(date)}
+        </p>
+        {match.locked && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500">
+            <Lock className="size-3" />
+            uzamčeno
+          </span>
+        )}
+      </div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-        {/* Home team */}
         <div className="flex flex-col items-center gap-1 text-center">
           <span className="text-2xl leading-none">{match.home.flagEmoji}</span>
           <span className="text-sm font-medium leading-tight text-slate-900 break-words">
             {match.home.name}
           </span>
         </div>
-
-        {/* Score inputs */}
         <div className="flex items-center gap-1.5">
           <input
             name={homeKey}
@@ -196,7 +190,7 @@ function MatchRow({
             inputMode="numeric"
             value={scores[homeKey] ?? ""}
             onChange={(e) => onChange(homeKey, e.target.value)}
-            disabled={disabled}
+            disabled={match.locked}
             className={cn(scoreInputClass)}
             aria-label={`Skóre ${match.home.name}`}
           />
@@ -209,13 +203,11 @@ function MatchRow({
             inputMode="numeric"
             value={scores[awayKey] ?? ""}
             onChange={(e) => onChange(awayKey, e.target.value)}
-            disabled={disabled}
+            disabled={match.locked}
             className={cn(scoreInputClass)}
             aria-label={`Skóre ${match.away.name}`}
           />
         </div>
-
-        {/* Away team */}
         <div className="flex flex-col items-center gap-1 text-center">
           <span className="text-2xl leading-none">{match.away.flagEmoji}</span>
           <span className="text-sm font-medium leading-tight text-slate-900 break-words">
