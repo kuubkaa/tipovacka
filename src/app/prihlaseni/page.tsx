@@ -21,7 +21,7 @@ export default async function PrihlaseniPage({
 
   async function signInAction(formData: FormData) {
     "use server";
-    await signIn("resend", {
+    await signIn("nodemailer", {
       email: formData.get("email"),
       redirectTo: callbackUrl ?? "/",
     });
