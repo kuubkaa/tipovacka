@@ -69,16 +69,32 @@ export default async function LeaderboardPage() {
           </div>
         )}
 
-        <p className="mt-6 text-xs text-slate-500">
-          Body: přesné skóre = {SCORING.match.exact}, vítěz+rozdíl ={" "}
-          {SCORING.match.winnerAndDiff}, jen vítěz ={" "}
-          {SCORING.match.winnerOnly}; pořadí skupiny {SCORING.groupRanking.perPosition} b za pozici +{SCORING.groupRanking.perfectBonus} bonus;
-          král střelců sk. = {SCORING.groupScorer}; postupy R32→F{" "}
-          {SCORING.advancers.R32}·{SCORING.advancers.R16}·{SCORING.advancers.QF}·
-          {SCORING.advancers.SF}·{SCORING.advancers.F}; vítěz turnaje ={" "}
-          {SCORING.tournamentWinner}; král střelců turnaje ={" "}
-          {SCORING.tournamentTopScorer}.
-        </p>
+        <div className="mt-6 space-y-1 text-xs text-slate-500">
+          <p>
+            <strong className="text-slate-700">Zápas (cascade):</strong>{" "}
+            přesné skóre {SCORING.match.exact} · vítěz + gólový rozdíl{" "}
+            {SCORING.match.winnerAndDiff} · jen vítěz/remíza{" "}
+            {SCORING.match.winnerOnly} · jen počet gólů celkem{" "}
+            {SCORING.match.totalGoals}
+          </p>
+          <p>
+            <strong className="text-slate-700">Skupiny:</strong>{" "}
+            {SCORING.groupRanking.perPosition} b za pozici · +
+            {SCORING.groupRanking.perfectBonus} bonus za přesné pořadí · král
+            střelců {SCORING.groupScorer}
+          </p>
+          <p>
+            <strong className="text-slate-700">Postupy</strong> (R32 · R16 ·
+            ČF · SF · F): {SCORING.advancers.R32} · {SCORING.advancers.R16} ·{" "}
+            {SCORING.advancers.QF} · {SCORING.advancers.SF} ·{" "}
+            {SCORING.advancers.F} za tým
+          </p>
+          <p>
+            <strong className="text-slate-700">Speciální:</strong> vítěz
+            turnaje {SCORING.tournamentWinner} · král střelců turnaje{" "}
+            {SCORING.tournamentTopScorer}
+          </p>
+        </div>
       </main>
     </div>
   );

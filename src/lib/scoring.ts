@@ -6,42 +6,52 @@ import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
  * Bodové schéma — zde se mění, jak se bodují tipy
  * =============================================================================
  *
+ * Bodování zápasu je TIEROVANÉ (cascade) — každý zápas dostane body
+ * z nejvyššího tieru, který sedí (NE součet). Pořadí od nejvyššího:
+ *   1. exact            — přesné skóre
+ *   2. winnerAndDiff    — správný vítěz/remíza + stejný gólový rozdíl
+ *   3. winnerOnly       — jen správný vítěz (jiný rozdíl)
+ *   4. totalGoals       — vítěz špatně, ale stejný počet gólů celkem
+ *   jinak 0.
+ *
  * Maximum při všech tipech přesných a všech výsledcích zadaných:
- *   72 × 5 (zápasy)             = 360
- *   12 × 6 (skupiny: 4×1 + 2)   =  72
- *   12 × 3 (králové sk. střelců) =  36
- *   advancers (R32 1 + R16 2 + QF 3 + SF 4 + F 5) = 32+32+24+16+10 = 114
- *   10 + 5 (vítěz + střelec turnaje) =  15
+ *   72 × 10 (zápasy)                  =  720
+ *   12 × (4×2 + 7) (skupiny)          =  180
+ *   12 × 20 (králové sk. střelců)     =  240
+ *   advancers (32×10 + 16×20 + 8×30 + 4×40 + 2×50) = 1140
+ *   60 + 50 (vítěz + střelec turnaje) =  110
  *   ───────────────────────────────────
- *   Celkem max:                       ≈ 597 b
+ *   Celkem max:                       ≈ 2 390 b
  */
 export const SCORING = {
   match: {
     /** Přesné skóre (např. tip 2:1, výsledek 2:1) */
-    exact: 5,
-    /** Správný vítěz a stejný gólový rozdíl (tip 2:1, výsledek 3:2) */
-    winnerAndDiff: 3,
+    exact: 10,
+    /** Správný vítěz/remíza a stejný gólový rozdíl (tip 2:1, výsledek 3:2) */
+    winnerAndDiff: 6,
     /** Jen správný vítěz / remíza, jiný rozdíl */
-    winnerOnly: 1,
+    winnerOnly: 3,
+    /** Útěcha: vítěz špatně, ale stejný celkový počet gólů (tip 3:0, real 1:2) */
+    totalGoals: 1,
   },
   groupRanking: {
-    /** 1 bod za každou správně tipnutou pozici (1.–4. místo) */
-    perPosition: 1,
+    /** 2 body za každou správně tipnutou pozici (1.–4. místo) */
+    perPosition: 2,
     /** Bonus, pokud sedí všechny 4 pozice */
-    perfectBonus: 2,
+    perfectBonus: 7,
   },
-  /** Bod za správně tipnutého krále střelců skupiny */
-  groupScorer: 3,
+  /** Body za správně tipnutého krále střelců skupiny */
+  groupScorer: 20,
   /** Body za každý správně tipnutý postupující tým v daném kole */
   advancers: {
-    R32: 1,
-    R16: 2,
-    QF: 3,
-    SF: 4,
-    F: 5,
+    R32: 10,
+    R16: 20,
+    QF: 30,
+    SF: 40,
+    F: 50,
   },
-  tournamentWinner: 10,
-  tournamentTopScorer: 5,
+  tournamentWinner: 60,
+  tournamentTopScorer: 50,
 } as const;
 
 // =============================================================================
@@ -54,17 +64,25 @@ export function scoreMatchTip(
   realHome: number,
   realAway: number
 ): number {
+  // 1) Exact
   if (tipHome === realHome && tipAway === realAway) {
     return SCORING.match.exact;
   }
   const tipSign = Math.sign(tipHome - tipAway);
   const realSign = Math.sign(realHome - realAway);
-  if (tipSign !== realSign) return 0;
-  // Stejný vítěz/remíza. Sedí i gólový rozdíl?
-  if (tipHome - tipAway === realHome - realAway) {
-    return SCORING.match.winnerAndDiff;
+  if (tipSign === realSign) {
+    // 2) Vítěz/remíza správně + stejný gólový rozdíl
+    if (tipHome - tipAway === realHome - realAway) {
+      return SCORING.match.winnerAndDiff;
+    }
+    // 3) Vítěz správně, jiný rozdíl
+    return SCORING.match.winnerOnly;
   }
-  return SCORING.match.winnerOnly;
+  // 4) Vítěz špatně, ale stejný celkový počet gólů — útěcha
+  if (tipHome + tipAway === realHome + realAway) {
+    return SCORING.match.totalGoals;
+  }
+  return 0;
 }
 
 export function scoreGroupRanking(
