@@ -15,7 +15,8 @@ export const tournament = {
 
   // Deadline pro odevzdání tipů (po tomto datu se zobrazí tipy všech)
   // Start MS 2026: 11. června 2026, 20:00 SELČ
-  deadline: new Date("2026-06-11T20:00:00+02:00"),
+  // TEMP: deadline posunut do minulosti, abychom viděli post-deadline /tipy view
+  deadline: new Date("2026-05-01T20:00:00+02:00"),
 
   // Email zobrazený v patičce pro dotazy
   contactEmail: "jakubmilotinsky@gmail.com",
