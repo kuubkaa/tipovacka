@@ -253,7 +253,7 @@ export async function saveKnockoutResultsAction(
           .map((v) => v.trim())
           .filter((v) => v !== "" && validTeamCodes.has(v))
       )
-    );
+    ).slice(0, round.targetCount); // server-side limit, kdyby klient lhal
 
     if (codes.length === 0) {
       const res = await db.knockoutAdvancersResult.deleteMany({

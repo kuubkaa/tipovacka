@@ -312,7 +312,7 @@ export async function saveSpecialTipsAction(
 
   for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
     const raw = formData.getAll(`advancers_${round.key}`);
-    // Vyfiltruj jen validní (existující) team codes a deduplikuj
+    // Vyfiltruj jen validní (existující) team codes, deduplikuj, ořež na max
     const codes = Array.from(
       new Set(
         raw
@@ -320,7 +320,7 @@ export async function saveSpecialTipsAction(
           .map((v) => v.trim())
           .filter((v) => v !== "" && validTeamCodes.has(v))
       )
-    );
+    ).slice(0, round.targetCount); // server-side limit
 
     if (codes.length === 0) {
       const res = await db.knockoutAdvancersTip.deleteMany({

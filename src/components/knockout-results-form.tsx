@@ -40,11 +40,15 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
   const [state, setState] = useState<SaveKnockoutResultsResult | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function toggle(roundKey: string, code: string) {
+  function toggle(roundKey: string, code: string, max: number) {
     setAdvancers((prev) => {
       const set = new Set(prev[roundKey] ?? []);
-      if (set.has(code)) set.delete(code);
-      else set.add(code);
+      if (set.has(code)) {
+        set.delete(code);
+      } else {
+        if (set.size >= max) return prev;
+        set.add(code);
+      }
       return { ...prev, [roundKey]: set };
     });
   }
@@ -108,22 +112,33 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
                   <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
                     {ts.map((t) => {
                       const selected = selectedSet.has(t.code);
+                      const atMax =
+                        !selected && selectedSet.size >= round.targetCount;
                       return (
                         <label
                           key={t.code}
-                          title={t.name}
+                          title={
+                            atMax
+                              ? `Maximum ${round.targetCount} dosaženo`
+                              : t.name
+                          }
                           className={cn(
-                            "flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                            "flex min-h-9 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
                             selected
-                              ? "border-slate-900 bg-slate-900 text-white"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-100"
+                              ? "cursor-pointer border-slate-900 bg-slate-900 text-white"
+                              : atMax
+                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
+                                : "cursor-pointer border-slate-200 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-100"
                           )}
                         >
                           <input
                             type="checkbox"
                             className="sr-only"
                             checked={selected}
-                            onChange={() => toggle(round.key, t.code)}
+                            disabled={atMax}
+                            onChange={() =>
+                              toggle(round.key, t.code, round.targetCount)
+                            }
                           />
                           <span className="text-sm leading-none">
                             {t.flagEmoji}
