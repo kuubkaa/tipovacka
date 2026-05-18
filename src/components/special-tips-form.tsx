@@ -4,12 +4,12 @@ import { useState, useTransition } from "react";
 import { Check, Loader2, Trophy } from "lucide-react";
 
 import {
-  KNOCKOUT_ADVANCERS_ROUNDS,
   saveSpecialTipsAction,
   type SaveSpecialTipsResult,
 } from "@/app/formular/actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition-colors focus-visible:border-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/20 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500";

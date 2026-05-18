@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { isDeadlinePassed } from "@/config/tournament";
 import { db } from "@/lib/db";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 
 const GROUP_LETTERS = [
   "A", "B", "C", "D", "E", "F",
@@ -215,16 +216,8 @@ export type SaveSpecialTipsResult =
   | { status: "unauth" }
   | { status: "error"; message: string };
 
-/// Vyřazovací kola, na která bere tipy "postupující": klíč v form data,
-/// odpovídající `Stage` enum value, a počet týmů které do daného kola
-/// postupují (jen pro UI counter — v DB neexistuje hard constraint).
-export const KNOCKOUT_ADVANCERS_ROUNDS = [
-  { key: "R32", stage: "ROUND_OF_32" as const, targetCount: 32, label: "Šestnáctifinále" },
-  { key: "R16", stage: "ROUND_OF_16" as const, targetCount: 16, label: "Osmifinále" },
-  { key: "QF", stage: "QUARTER_FINAL" as const, targetCount: 8, label: "Čtvrtfinále" },
-  { key: "SF", stage: "SEMI_FINAL" as const, targetCount: 4, label: "Semifinále" },
-  { key: "F", stage: "FINAL" as const, targetCount: 2, label: "Finále" },
-] as const;
+// KNOCKOUT_ADVANCERS_ROUNDS bydlí v src/lib/knockout-rounds.ts (sdílené
+// mezi serverem a klientem; nesmí být v "use server" souboru).
 
 const SPECIAL_TIP_TYPES = [
   "TOURNAMENT_WINNER",
