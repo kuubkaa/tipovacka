@@ -99,13 +99,6 @@ export default function PravidlaPage() {
           </ul>
         </Card>
 
-        <Card title="Celkové maximum">
-          <p className="text-sm text-slate-700">
-            Při dokonale trefených tipech a všech zadaných výsledcích lze
-            získat <strong>≈ {totalMax()} bodů</strong>. Reálně se pohybuje
-            výsledek hluboko pod tímto stropem.
-          </p>
-        </Card>
       </div>
     </PageShell>
   );
@@ -158,20 +151,3 @@ function Bullet({ children }: { children: React.ReactNode }) {
   );
 }
 
-function totalMax(): number {
-  const matchMax = 72 * SCORING.match.exact;
-  const groupMax =
-    12 *
-    (4 * SCORING.groupRanking.perPosition + SCORING.groupRanking.perfectBonus);
-  const scorerMax = 12 * SCORING.groupScorer;
-  const advancersMax =
-    32 * SCORING.advancers.R32 +
-    16 * SCORING.advancers.R16 +
-    8 * SCORING.advancers.QF +
-    4 * SCORING.advancers.SF +
-    2 * SCORING.advancers.BRONZ +
-    2 * SCORING.advancers.F;
-  const specialMax =
-    SCORING.tournamentWinner + SCORING.tournamentTopScorer;
-  return matchMax + groupMax + scorerMax + advancersMax + specialMax;
-}
