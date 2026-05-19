@@ -39,7 +39,7 @@ export const SCORING = {
   groupRanking: {
     /** 2 body za každou správně tipnutou pozici (1.–4. místo) */
     perPosition: 2,
-    /** Bonus, pokud sedí všechny 4 pozice */
+    /** Bonus, pokud sedí všechny 4 pozice (2×4 + 7 = 15 b celkem) */
     perfectBonus: 7,
   },
   /** Body za správně tipnutého krále střelců skupiny */

@@ -8,11 +8,11 @@ export default function PravidlaPage() {
       description="Jak se počítají body za jednotlivé tipy."
     >
       <div className="space-y-6">
-        <Card title="Tipy zápasů — cascade">
+        <Card title="Tipy zápasů">
           <p className="text-sm text-slate-600">
-            Za každý zápas dostane tipér body z nejvyššího pravidla, které
-            sedí. <strong>Body se nesčítají</strong> — započítá se jen nejlepší
-            tier.
+            Za každý zápas získá tipující body podle nejvyššího splněného
+            pravidla. <strong>Body se nesčítají</strong>, započítá se pouze
+            nejvyšší bodové ohodnocení.
           </p>
           <table className="mt-3 w-full text-sm">
             <tbody className="divide-y divide-slate-100">
@@ -38,10 +38,6 @@ export default function PravidlaPage() {
               />
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-slate-500">
-            Pozn.: remíza vždy spadne do druhého tieru (rozdíl 0 sedí), nikdy
-            do třetího.
-          </p>
         </Card>
 
         <Card title="Pořadí ve skupině (1.–4. místo)">
@@ -51,29 +47,20 @@ export default function PravidlaPage() {
               správně tipnutou pozici (max 8 b)
             </Bullet>
             <Bullet>
-              <strong>+{SCORING.groupRanking.perfectBonus} b bonus</strong>,
-              pokud sedí všechny 4 pozice naráz
+              <strong>
+                {4 * SCORING.groupRanking.perPosition +
+                  SCORING.groupRanking.perfectBonus}{" "}
+                b
+              </strong>{" "}
+              za správně určené celé pořadí skupiny
             </Bullet>
           </ul>
-          <p className="mt-2 text-xs text-slate-500">
-            Maximum za skupinu = 4 × {SCORING.groupRanking.perPosition} +{" "}
-            {SCORING.groupRanking.perfectBonus} ={" "}
-            {4 * SCORING.groupRanking.perPosition +
-              SCORING.groupRanking.perfectBonus}{" "}
-            b · za všech 12 skupin ={" "}
-            {12 *
-              (4 * SCORING.groupRanking.perPosition +
-                SCORING.groupRanking.perfectBonus)}{" "}
-            b.
-          </p>
         </Card>
 
         <Card title="Král střelců skupiny">
           <p className="text-sm text-slate-700">
             <strong>{SCORING.groupScorer} b</strong> za každého správně
-            tipnutého krále střelců skupiny (jméno hráče se porovnává
-            case-insensitive). Za všech 12 skupin maximum{" "}
-            {12 * SCORING.groupScorer} b.
+            tipnutého krále střelců skupiny.
           </p>
         </Card>
 
@@ -86,34 +73,16 @@ export default function PravidlaPage() {
             <tbody className="divide-y divide-slate-100">
               <Row
                 label="Šestnáctifinále (R32)"
-                example="32 týmů × bodů za tým"
                 points={SCORING.advancers.R32}
               />
               <Row
                 label="Osmifinále (R16)"
-                example="16 týmů × bodů za tým"
                 points={SCORING.advancers.R16}
               />
-              <Row
-                label="Čtvrtfinále"
-                example="8 týmů × bodů za tým"
-                points={SCORING.advancers.QF}
-              />
-              <Row
-                label="Semifinále"
-                example="4 týmy × bodů za tým"
-                points={SCORING.advancers.SF}
-              />
-              <Row
-                label="O 3. místo"
-                example="2 týmy (poražení ze SF) × bodů za tým"
-                points={SCORING.advancers.BRONZ}
-              />
-              <Row
-                label="Finále"
-                example="2 týmy × bodů za tým"
-                points={SCORING.advancers.F}
-              />
+              <Row label="Čtvrtfinále" points={SCORING.advancers.QF} />
+              <Row label="Semifinále" points={SCORING.advancers.SF} />
+              <Row label="O 3. místo" points={SCORING.advancers.BRONZ} />
+              <Row label="Finále" points={SCORING.advancers.F} />
             </tbody>
           </table>
         </Card>
@@ -163,14 +132,16 @@ function Row({
   points,
 }: {
   label: string;
-  example: string;
+  example?: string;
   points: number;
 }) {
   return (
     <tr>
       <td className="py-2 pr-3 align-top">
         <div className="font-medium text-slate-800">{label}</div>
-        <div className="text-xs text-slate-500">{example}</div>
+        {example && (
+          <div className="text-xs text-slate-500">{example}</div>
+        )}
       </td>
       <td className="py-2 text-right align-top text-base font-bold tabular-nums text-emerald-700">
         {points} b
