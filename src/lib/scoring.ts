@@ -107,18 +107,36 @@ export function scoreGroupRanking(
   return pts;
 }
 
-/** Case-insensitive trim porovnání jména hráče */
-function normalizeName(s: string): string {
-  return s.trim().toLocaleLowerCase("cs-CZ");
+/**
+ * Normalizace jména pro porovnání tipů: lowercase (cs-CZ),
+ * strip diakritiky a sjednocení whitespace. "Mbappé" == "mbappe".
+ */
+export function normalizeName(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLocaleLowerCase("cs-CZ")
+    .replace(/\s+/g, " ");
 }
 
+/**
+ * Tip se počítá jako správný, pokud po normalizaci odpovídá `real` NEBO
+ * libovolnému aliasu, který admin označil za platnou alternativu.
+ */
 export function scorePlayerName(
   tip: string | null | undefined,
   real: string | null | undefined,
-  points: number
+  points: number,
+  acceptedAliases: string[] = []
 ): number {
   if (!tip || !real) return 0;
-  return normalizeName(tip) === normalizeName(real) ? points : 0;
+  const t = normalizeName(tip);
+  if (t === normalizeName(real)) return points;
+  for (const alias of acceptedAliases) {
+    if (alias && t === normalizeName(alias)) return points;
+  }
+  return 0;
 }
 
 export function scoreAdvancers(
@@ -214,7 +232,7 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
       select: { userId: true, stage: true, teamCodes: true },
     }),
     db.tournamentResult.findMany({
-      select: { type: true, value: true },
+      select: { type: true, value: true, acceptedAliases: true },
     }),
     db.specialTip.findMany({
       select: { userId: true, type: true, value: true },
@@ -230,7 +248,10 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
     knockoutResults.map((r) => [r.stage, r.teamCodes])
   );
   const tournamentResultByType = new Map(
-    tournamentResults.map((r) => [r.type, r.value])
+    tournamentResults.map((r) => [
+      r.type,
+      { value: r.value, aliases: r.acceptedAliases },
+    ])
   );
 
   // Index tipů per user
@@ -264,11 +285,12 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
     let groupScorerPts = 0;
     for (const t of specialTipsByUser.get(u.id) ?? []) {
       if (!t.type.startsWith("TOP_SCORER_GROUP_")) continue;
-      const realValue = tournamentResultByType.get(t.type);
+      const real = tournamentResultByType.get(t.type);
       groupScorerPts += scorePlayerName(
         t.value,
-        realValue,
-        SCORING.groupScorer
+        real?.value,
+        SCORING.groupScorer,
+        real?.aliases
       );
     }
 
@@ -288,13 +310,15 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
       if (t.type === "TOURNAMENT_WINNER") {
         specialPts += scoreTournamentWinner(
           t.value,
-          tournamentResultByType.get(t.type)
+          tournamentResultByType.get(t.type)?.value
         );
       } else if (t.type === "TOP_SCORER_TOURNAMENT") {
+        const real = tournamentResultByType.get(t.type);
         specialPts += scorePlayerName(
           t.value,
-          tournamentResultByType.get(t.type),
-          SCORING.tournamentTopScorer
+          real?.value,
+          SCORING.tournamentTopScorer,
+          real?.aliases
         );
       }
     }

@@ -5,6 +5,7 @@ import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { isValidEmail, sendMail } from "@/lib/mailer";
+import { normalizeName } from "@/lib/scoring";
 
 const GROUP_LETTERS = [
   "A", "B", "C", "D", "E", "F",
@@ -620,4 +621,65 @@ export async function saveKnockoutFixturesAction(
   }
 
   return { status: "ok", saved, skipped };
+}
+
+// =============================================================================
+// Sjednocení jmen králů střelců — admin po turnaji označí, které varianty
+// pravopisu se počítají jako shoda se skutečnou odpovědí.
+// =============================================================================
+
+export type SaveScorerAliasesResult =
+  | { status: "ok"; saved: number }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+const TOP_SCORER_TYPE_RE = /^TOP_SCORER_(TOURNAMENT|GROUP_[A-L])$/;
+
+/**
+ * Pro každý TOP_SCORER_* typ uloží seznam přijatých aliasů (alternativních
+ * pravopisů jména hráče). FormData formát:
+ *   alias_<type> = jeden alias (může se opakovat více řádků se stejným klíčem)
+ *
+ * Aliasy, které po normalizaci splývají se samotnou skutečnou hodnotou,
+ * se ignorují (počítají se automaticky). Duplicity (po normalizaci) se
+ * deduplikují. Typy bez nastavené skutečné hodnoty se přeskočí.
+ */
+export async function saveScorerAliasesAction(
+  _prev: SaveScorerAliasesResult | null,
+  formData: FormData
+): Promise<SaveScorerAliasesResult> {
+  const session = await requireAdminSession();
+  if (!session) return { status: "forbidden" };
+
+  const existing = await db.tournamentResult.findMany({
+    where: { type: { startsWith: "TOP_SCORER_" } },
+    select: { type: true, value: true },
+  });
+
+  let saved = 0;
+
+  for (const r of existing) {
+    if (!TOP_SCORER_TYPE_RE.test(r.type)) continue;
+    const raw = formData.getAll(`alias_${r.type}`);
+    const realN = normalizeName(r.value);
+    const seenN = new Set<string>([realN]);
+    const aliases: string[] = [];
+    for (const v of raw) {
+      if (typeof v !== "string") continue;
+      const trimmed = v.trim();
+      if (!trimmed || trimmed.length > 80) continue;
+      const n = normalizeName(trimmed);
+      if (n === "" || seenN.has(n)) continue;
+      seenN.add(n);
+      aliases.push(trimmed);
+    }
+    await db.tournamentResult.update({
+      where: { type: r.type },
+      data: { acceptedAliases: aliases },
+    });
+    saved++;
+  }
+
+  return { status: "ok", saved };
 }

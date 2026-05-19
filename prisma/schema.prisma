@@ -209,10 +209,14 @@ model KnockoutAdvancersResult {
 /// Skutečný vítěz turnaje, král střelců turnaje, králové střelců skupin.
 /// type používá stejné konvence jako SpecialTip:
 /// "TOURNAMENT_WINNER", "TOP_SCORER_TOURNAMENT", "TOP_SCORER_GROUP_<A-L>".
+/// `acceptedAliases` — pro free-text typy (TOP_SCORER_*) seznam alternativních
+/// jmen, která admin po turnaji ručně označil jako shodu s `value`.
+/// Bodování porovnává normalizovaný tip vůči normalizovanému `value` i aliasům.
 model TournamentResult {
-  type      String   @id
-  value     String
-  updatedAt DateTime @updatedAt
+  type            String   @id
+  value           String
+  acceptedAliases String[] @default([])
+  updatedAt       DateTime @updatedAt
 }
 
 model SpecialTip {

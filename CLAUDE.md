@@ -136,6 +136,7 @@ Pokud `NODE_ENV=production`:
 - **2026-05-18:** Auth.js v5 (beta) zvolen místo Neon Auth. Env vars na Vercelu: `AUTH_SECRET`, `AUTH_RESEND_KEY` (Auth.js si je najde automaticky podle konvence `AUTH_<PROVIDER>_KEY`). V dev modu se magic link loguje do terminálu — Resend se používá jen v produkci.
 - **2026-05-18:** Resend sender zatím `onboarding@resend.dev` (free tier bez vlastní domény). Pošle se jen na email registrovaný v Resendu. Pro pozvánky cizím adresám musíme ověřit vlastní doménu.
 - **2026-05-18:** Místo ověření domény jsme přepnuli na **Gmail SMTP** (Nodemailer + App Password). Posílá z `jakubmilotinsky@gmail.com` na jakoukoli adresu, 500/den limit, žádná doména potřeba. Env vars na Vercelu: `EMAIL_SERVER_HOST/PORT/USER/PASSWORD` + `EMAIL_FROM`.
+- **2026-05-19:** **Král střelců — volný text + admin sjednocení.** Tipér zadá jméno hráče volně (žádný dropdown ze soupisek). Po turnaji admin v rozhraní označí, které textové varianty se počítají jako shoda se skutečným králem střelců (normalizace + ruční rozhodnutí o sporných případech jako „Ronaldo"). Důvod: soupisky nejsou v době tipování ještě venku a import ~1200 hráčů je overkill pro pár tipů. Týká se i krále střelců po skupinách.
 
 ## Údržba tohoto souboru
 - Aktualizuj po každé strukturální změně, novém pravidlu nebo rozhodnutí

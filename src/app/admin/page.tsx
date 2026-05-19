@@ -6,6 +6,7 @@ import {
   Mail,
   Medal,
   Network,
+  Scale,
   Trophy,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export default async function AdminPage() {
     groupScorersCount,
     userCount,
     knockoutMatchesCount,
+    scorerTypesWithResult,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -52,6 +54,9 @@ export default async function AdminPage() {
           ],
         },
       },
+    }),
+    db.tournamentResult.count({
+      where: { type: { startsWith: "TOP_SCORER_" } },
     }),
   ]);
 
@@ -131,6 +136,22 @@ export default async function AdminPage() {
                 {knockoutMatchesCount === 0 && (
                   <span className="ml-1 text-slate-500">
                     (doplň po skupinách)
+                  </span>
+                )}
+              </>
+            }
+          />
+
+          <AdminCard
+            href="/admin/sjednoceni"
+            icon={<Scale className="size-5 text-teal-600" />}
+            title="Sjednocení střelců"
+            summary={
+              <>
+                {scorerTypesWithResult} / 13 zadáno
+                {scorerTypesWithResult === 0 && (
+                  <span className="ml-1 text-slate-500">
+                    (po skončení skupin)
                   </span>
                 )}
               </>
