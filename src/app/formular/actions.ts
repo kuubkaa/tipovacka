@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { isDeadlinePassed } from "@/config/tournament";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+import { recordTipChange } from "@/lib/tip-audit";
 
 const GROUP_LETTERS = [
   "A", "B", "C", "D", "E", "F",
@@ -84,6 +85,12 @@ export async function saveTipsAction(
   });
   const matchById = new Map(validMatches.map((m) => [m.id, m]));
 
+  const existingTips = await db.tip.findMany({
+    where: { userId, matchId: { in: matchIds } },
+    select: { matchId: true, homeScore: true, awayScore: true },
+  });
+  const existingByMatch = new Map(existingTips.map((t) => [t.matchId, t]));
+
   let saved = 0;
   let lockedSkipped = 0;
   for (const u of updates) {
@@ -96,6 +103,7 @@ export async function saveTipsAction(
       continue;
     }
 
+    const before = existingByMatch.get(u.matchId);
     await db.tip.upsert({
       where: { userId_matchId: { userId, matchId: u.matchId } },
       create: {
@@ -108,6 +116,15 @@ export async function saveTipsAction(
         homeScore: u.home,
         awayScore: u.away,
       },
+    });
+    await recordTipChange({
+      userId,
+      entityType: "MATCH_TIP",
+      entityKey: u.matchId,
+      oldValue: before
+        ? { homeScore: before.homeScore, awayScore: before.awayScore }
+        : null,
+      newValue: { homeScore: u.home, awayScore: u.away },
     });
     saved++;
   }
@@ -176,6 +193,12 @@ export async function saveGroupRankingsAction(
   const skipped: string[] = [];
   let saved = 0;
 
+  const existingRankings = await db.groupRankingTip.findMany({
+    where: { userId },
+    select: { group: true, teamCodes: true },
+  });
+  const rankingByGroup = new Map(existingRankings.map((r) => [r.group, r.teamCodes]));
+
   for (const group of GROUP_LETTERS) {
     const codes = [
       formData.get(`group_${group}_pos1`),
@@ -198,10 +221,18 @@ export async function saveGroupRankingsAction(
       continue;
     }
 
+    const before = rankingByGroup.get(group as GroupLetter) ?? null;
     await db.groupRankingTip.upsert({
       where: { userId_group: { userId, group: group as GroupLetter } },
       create: { userId, group: group as GroupLetter, teamCodes: codes },
       update: { teamCodes: codes },
+    });
+    await recordTipChange({
+      userId,
+      entityType: "GROUP_RANKING",
+      entityKey: group,
+      oldValue: before ? { teamCodes: before } : null,
+      newValue: { teamCodes: codes },
     });
     saved++;
   }
@@ -209,12 +240,28 @@ export async function saveGroupRankingsAction(
   // --- Králové střelců skupin (sdílí stejný form a save button) ---
   let scorersSaved = 0;
   let scorersDeleted = 0;
+  const groupScorerTypes = GROUP_LETTERS.map((g) => `TOP_SCORER_GROUP_${g}`);
+  const existingGroupScorers = await db.specialTip.findMany({
+    where: { userId, type: { in: groupScorerTypes } },
+    select: { type: true, value: true },
+  });
+  const scorerByType = new Map(existingGroupScorers.map((s) => [s.type, s.value]));
   for (const group of GROUP_LETTERS) {
     const raw = formData.get(`group_${group}_scorer`);
     const value = typeof raw === "string" ? raw.trim() : "";
     const type = `TOP_SCORER_GROUP_${group}`;
+    const before = scorerByType.get(type);
     if (value === "") {
       const res = await db.specialTip.deleteMany({ where: { userId, type } });
+      if (res.count > 0 && before !== undefined) {
+        await recordTipChange({
+          userId,
+          entityType: "SPECIAL_TIP",
+          entityKey: type,
+          oldValue: { value: before },
+          newValue: null,
+        });
+      }
       scorersDeleted += res.count;
       continue;
     }
@@ -223,6 +270,13 @@ export async function saveGroupRankingsAction(
       where: { userId_type: { userId, type } },
       create: { userId, type, value },
       update: { value },
+    });
+    await recordTipChange({
+      userId,
+      entityType: "SPECIAL_TIP",
+      entityKey: type,
+      oldValue: before !== undefined ? { value: before } : null,
+      newValue: { value },
     });
     scorersSaved++;
   }
@@ -286,14 +340,30 @@ export async function saveSpecialTipsAction(
   let saved = 0;
   let deleted = 0;
 
+  const existingSpecials = await db.specialTip.findMany({
+    where: { userId, type: { in: [...SPECIAL_TIP_TYPES] } },
+    select: { type: true, value: true },
+  });
+  const specialByType = new Map(existingSpecials.map((s) => [s.type, s.value]));
+
   for (const type of SPECIAL_TIP_TYPES) {
     const raw = formData.get(`special_${type}`);
     const value = typeof raw === "string" ? raw.trim() : "";
+    const before = specialByType.get(type);
 
     if (value === "") {
       const res = await db.specialTip.deleteMany({
         where: { userId, type },
       });
+      if (res.count > 0 && before !== undefined) {
+        await recordTipChange({
+          userId,
+          entityType: "SPECIAL_TIP",
+          entityKey: type,
+          oldValue: { value: before },
+          newValue: null,
+        });
+      }
       deleted += res.count;
       continue;
     }
@@ -309,12 +379,27 @@ export async function saveSpecialTipsAction(
       create: { userId, type, value },
       update: { value },
     });
+    await recordTipChange({
+      userId,
+      entityType: "SPECIAL_TIP",
+      entityKey: type,
+      oldValue: before !== undefined ? { value: before } : null,
+      newValue: { value },
+    });
     saved++;
   }
 
   // --- Postupující do vyřazovacích kol ---
   let advancersSaved = 0;
   let advancersDeleted = 0;
+
+  const existingAdvancers = await db.knockoutAdvancersTip.findMany({
+    where: { userId },
+    select: { stage: true, teamCodes: true },
+  });
+  const advancersByStage = new Map(
+    existingAdvancers.map((a) => [a.stage, a.teamCodes])
+  );
 
   for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
     const raw = formData.getAll(`advancers_${round.key}`);
@@ -328,10 +413,21 @@ export async function saveSpecialTipsAction(
       )
     ).slice(0, round.targetCount); // server-side limit
 
+    const before = advancersByStage.get(round.stage);
+
     if (codes.length === 0) {
       const res = await db.knockoutAdvancersTip.deleteMany({
         where: { userId, stage: round.stage },
       });
+      if (res.count > 0 && before) {
+        await recordTipChange({
+          userId,
+          entityType: "KNOCKOUT_ADVANCERS",
+          entityKey: round.stage,
+          oldValue: { teamCodes: before },
+          newValue: null,
+        });
+      }
       advancersDeleted += res.count;
       continue;
     }
@@ -340,6 +436,13 @@ export async function saveSpecialTipsAction(
       where: { userId_stage: { userId, stage: round.stage } },
       create: { userId, stage: round.stage, teamCodes: codes },
       update: { teamCodes: codes },
+    });
+    await recordTipChange({
+      userId,
+      entityType: "KNOCKOUT_ADVANCERS",
+      entityKey: round.stage,
+      oldValue: before ? { teamCodes: before } : null,
+      newValue: { teamCodes: codes },
     });
     advancersSaved++;
   }

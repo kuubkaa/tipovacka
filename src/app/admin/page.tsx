@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   GitFork,
+  History,
   ListChecks,
   Mail,
   Medal,
@@ -27,6 +28,8 @@ export default async function AdminPage() {
     userCount,
     knockoutMatchesCount,
     scorerTypesWithResult,
+    tipChangeLogCount,
+    tipChangeUsersCount,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -58,6 +61,10 @@ export default async function AdminPage() {
     db.tournamentResult.count({
       where: { type: { startsWith: "TOP_SCORER_" } },
     }),
+    db.tipChangeLog.count(),
+    db.tipChangeLog
+      .groupBy({ by: ["userId"] })
+      .then((rows) => rows.length),
   ]);
 
   const remaining = totalMatches - playedMatches;
@@ -154,6 +161,24 @@ export default async function AdminPage() {
                     (po skončení skupin)
                   </span>
                 )}
+              </>
+            }
+          />
+
+          <AdminCard
+            href="/admin/historie"
+            icon={<History className="size-5 text-slate-600" />}
+            title="Historie tipů"
+            summary={
+              <>
+                {tipChangeLogCount}{" "}
+                {tipChangeLogCount === 1 ? "změna" : tipChangeLogCount < 5 ? "změny" : "změn"}{" "}
+                od {tipChangeUsersCount}{" "}
+                {tipChangeUsersCount === 1
+                  ? "tipéra"
+                  : tipChangeUsersCount < 5
+                    ? "tipérů"
+                    : "tipérů"}
               </>
             }
           />

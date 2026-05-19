@@ -64,6 +64,7 @@ model User {
   specialTips         SpecialTip[]
   groupRankings       GroupRankingTip[]
   knockoutAdvancers   KnockoutAdvancersTip[]
+  tipChangeLogs       TipChangeLog[]
 }
 
 // =============================================================================
@@ -231,4 +232,33 @@ model SpecialTip {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, type])
+}
+
+// =============================================================================
+// Audit log tipů
+// =============================================================================
+
+/// Append-only historie změn tipů pro řešení sporů.
+/// Zapisuje se pouze při skutečné změně (oldValue != newValue).
+///
+/// `entityType`:
+///   MATCH_TIP            — entityKey = match.id           (Tip model)
+///   GROUP_RANKING        — entityKey = "A".."L"           (GroupRankingTip)
+///   KNOCKOUT_ADVANCERS   — entityKey = stage string       (KnockoutAdvancersTip)
+///   SPECIAL_TIP          — entityKey = SpecialTip.type    (např. "TOURNAMENT_WINNER")
+///
+/// `oldValue` / `newValue` — JSON snapshot tipu. null v `oldValue` = první vytvoření.
+/// null v `newValue` = smazání tipu (např. prázdný free-text king-scorer).
+model TipChangeLog {
+  id          String   @id @default(cuid())
+  userId      String
+  entityType  String
+  entityKey   String
+  oldValue    Json?
+  newValue    Json?
+  changedAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, changedAt])
+  @@index([entityType, entityKey])
 }
