@@ -120,17 +120,18 @@ export default async function LeaderboardPage() {
 
         <div className="mt-6 space-y-1 text-xs text-slate-500 print:mt-4 print:text-slate-600">
           <p>
-            <strong className="text-slate-700">Zápas (cascade):</strong>{" "}
-            přesné skóre {SCORING.match.exact} · vítěz/remíza + gólový rozdíl{" "}
+            <strong className="text-slate-700">Zápas:</strong> přesné skóre{" "}
+            {SCORING.match.exact} · vítěz/remíza + gólový rozdíl{" "}
             {SCORING.match.winnerAndDiff} · jen vítěz{" "}
             {SCORING.match.winnerOnly} · jen počet gólů celkem{" "}
             {SCORING.match.totalGoals}
           </p>
           <p>
             <strong className="text-slate-700">Skupiny:</strong>{" "}
-            {SCORING.groupRanking.perPosition} b za pozici · +
-            {SCORING.groupRanking.perfectBonus} bonus za přesné pořadí · král
-            střelců {SCORING.groupScorer}
+            {SCORING.groupRanking.perPosition} b za pozici ·{" "}
+            {4 * SCORING.groupRanking.perPosition +
+              SCORING.groupRanking.perfectBonus}{" "}
+            b za celé pořadí · král střelců {SCORING.groupScorer}
           </p>
           <p>
             <strong className="text-slate-700">Postupy</strong> (R32 · R16 ·
