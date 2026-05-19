@@ -41,10 +41,10 @@ export default function PravidlaPage() {
         </Card>
 
         <Card title="Pořadí ve skupině (1.–4. místo)">
-          <ul className="space-y-1 text-sm text-slate-700">
+          <ul className="list-none space-y-1 text-sm text-slate-700">
             <Bullet>
               <strong>{SCORING.groupRanking.perPosition} b</strong> za každou
-              správně tipnutou pozici (max 8 b)
+              správně tipnutou pozici
             </Bullet>
             <Bullet>
               <strong>
@@ -88,7 +88,7 @@ export default function PravidlaPage() {
         </Card>
 
         <Card title="Speciální tipy">
-          <ul className="space-y-1 text-sm text-slate-700">
+          <ul className="list-none space-y-1 text-sm text-slate-700">
             <Bullet>
               <strong>Vítěz turnaje:</strong> {SCORING.tournamentWinner} b
             </Bullet>
@@ -152,8 +152,7 @@ function Row({
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2">
-      <span className="mt-1 inline-block size-1.5 shrink-0 rounded-full bg-slate-400" />
+    <li>
       <span>{children}</span>
     </li>
   );
