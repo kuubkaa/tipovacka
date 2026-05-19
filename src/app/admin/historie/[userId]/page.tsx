@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { DeleteUserButton } from "@/components/delete-user-button";
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
@@ -167,6 +168,8 @@ export default async function AdminHistoryDetailPage({
     teams.map((t) => [t.code, { name: t.name, flagEmoji: t.flagEmoji }])
   );
 
+  const isSelf = session.user.id === user.id;
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
@@ -185,12 +188,22 @@ export default async function AdminHistoryDetailPage({
               <p className="truncate text-xs text-slate-500">{user.email}</p>
             )}
           </div>
-          <p className="text-xs text-slate-500">
-            {tournament.shortName} ·{" "}
-            <span className="font-medium text-slate-700">
-              {session.user.name ?? session.user.email}
-            </span>
-          </p>
+          <div className="flex shrink-0 items-center gap-3">
+            {!isSelf && (
+              <DeleteUserButton
+                userId={user.id}
+                userLabel={user.name ?? user.email}
+                redirectTo="/admin/historie"
+                variant="button"
+              />
+            )}
+            <p className="hidden text-xs text-slate-500 sm:block">
+              {tournament.shortName} ·{" "}
+              <span className="font-medium text-slate-700">
+                {session.user.name ?? session.user.email}
+              </span>
+            </p>
+          </div>
         </div>
       </header>
 

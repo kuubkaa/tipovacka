@@ -1,5 +1,7 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+
 import { auth } from "@/auth";
 import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
@@ -682,4 +684,44 @@ export async function saveScorerAliasesAction(
   }
 
   return { status: "ok", saved };
+}
+
+// =============================================================================
+// Smazání uživatelského účtu
+// =============================================================================
+
+export type DeleteUserResult =
+  | { status: "ok"; deletedEmail: string }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "self" }
+  | { status: "not-found" }
+  | { status: "error"; message: string };
+
+/**
+ * Admin akce — kompletně smaže uživatele a všechna jeho data
+ * (sessions, accounts, všechny tipy, audit log) přes onDelete: Cascade.
+ * Použití: vyčištění duplicitního účtu.
+ *
+ * Ochrana: admin nesmí smazat sám sebe (vede k uzamčení rozhraní).
+ */
+export async function deleteUserAction(
+  userId: string
+): Promise<DeleteUserResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { status: "unauth" };
+  if (!session.user.isAdmin) return { status: "forbidden" };
+  if (session.user.id === userId) return { status: "self" };
+
+  const target = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true },
+  });
+  if (!target) return { status: "not-found" };
+
+  await db.user.delete({ where: { id: userId } });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/historie");
+  return { status: "ok", deletedEmail: target.email };
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { History } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
+import { DeleteUserButton } from "@/components/delete-user-button";
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
@@ -16,6 +17,7 @@ const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
 
 export default async function AdminHistoriePage() {
   const session = await requireAdmin("/admin/historie");
+  const currentUserId = session.user.id;
 
   const [users, logCounts] = await Promise.all([
     db.user.findMany({
@@ -80,37 +82,60 @@ export default async function AdminHistoriePage() {
           </p>
         ) : (
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
-            {rows.map((u) => (
-              <li key={u.id}>
-                <Link
-                  href={`/admin/historie/${u.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50"
+            {rows.map((u) => {
+              const isSelf = u.id === currentUserId;
+              return (
+                <li
+                  key={u.id}
+                  className="flex items-center gap-2 pr-3 hover:bg-slate-50"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-slate-900">
-                      {u.name ?? <span className="italic text-slate-500">(bez jména)</span>}
-                    </p>
-                    <p className="truncate text-xs text-slate-500">{u.email}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3 text-right">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {u.stats?.count ?? 0}{" "}
-                        <span className="text-xs font-normal text-slate-500">
-                          {u.stats?.count === 1 ? "změna" : "změn"}
-                        </span>
+                  <Link
+                    href={`/admin/historie/${u.id}`}
+                    className="flex flex-1 items-center justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-slate-900">
+                        {u.name ?? (
+                          <span className="italic text-slate-500">
+                            (bez jména)
+                          </span>
+                        )}
+                        {isSelf && (
+                          <span className="ml-2 text-xs font-normal text-slate-500">
+                            (ty)
+                          </span>
+                        )}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {u.stats?.last
-                          ? `naposledy ${dateFormatter.format(u.stats.last)}`
-                          : "žádné změny"}
+                      <p className="truncate text-xs text-slate-500">
+                        {u.email}
                       </p>
                     </div>
-                    <History className="size-4 text-slate-400" />
-                  </div>
-                </Link>
-              </li>
-            ))}
+                    <div className="flex shrink-0 items-center gap-3 text-right">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">
+                          {u.stats?.count ?? 0}{" "}
+                          <span className="text-xs font-normal text-slate-500">
+                            {u.stats?.count === 1 ? "změna" : "změn"}
+                          </span>
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {u.stats?.last
+                            ? `naposledy ${dateFormatter.format(u.stats.last)}`
+                            : "žádné změny"}
+                        </p>
+                      </div>
+                      <ArrowRight className="size-4 text-slate-400" />
+                    </div>
+                  </Link>
+                  {!isSelf && (
+                    <DeleteUserButton
+                      userId={u.id}
+                      userLabel={u.name ?? u.email}
+                    />
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </main>
