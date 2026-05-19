@@ -19,7 +19,7 @@ import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
  *   72 × 10 (zápasy)                  =  720
  *   12 × (4×2 + 7) (skupiny)          =  180
  *   12 × 20 (králové sk. střelců)     =  240
- *   advancers (32×10 + 16×20 + 8×30 + 4×40 + 2×45 + 2×50) = 1230
+ *   advancers (32×10 + 16×20 + 8×30 + 4×40 + 2×50 + 2×50) = 1240
  *   60 + 50 (vítěz + střelec turnaje) =  110
  *   ───────────────────────────────────
  *   Celkem max:                       ≈ 2 480 b
@@ -50,7 +50,7 @@ export const SCORING = {
     R16: 20,
     QF: 30,
     SF: 40,
-    BRONZ: 45,
+    BRONZ: 50,
     F: 50,
   },
   tournamentWinner: 60,
