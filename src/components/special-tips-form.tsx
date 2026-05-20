@@ -126,10 +126,10 @@ export function SpecialTipsForm({
               </h2>
               <span
                 className={cn(
-                  "text-xs font-medium tabular-nums",
+                  "text-xs tabular-nums",
                   selectedCount === round.targetCount
-                    ? "text-emerald-700"
-                    : "text-slate-500"
+                    ? "font-semibold text-black"
+                    : "font-medium text-slate-500"
                 )}
               >
                 Vybráno: {selectedCount} / {round.targetCount}
