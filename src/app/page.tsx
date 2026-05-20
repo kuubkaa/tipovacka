@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarClock, Trophy } from "lucide-react";
+import { ArrowRight, CalendarClock } from "lucide-react";
 
 import { auth, signOut } from "@/auth";
 import { tournament, isDeadlinePassed } from "@/config/tournament";
@@ -101,11 +101,6 @@ export default async function Home() {
             className="h-28 w-auto"
           />
         </div>
-
-        <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wider text-white/80 ring-1 ring-white/20">
-          <Trophy className="size-3.5" />
-          Tipovací liga
-        </p>
 
         <h1 className="max-w-3xl text-balance text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">
           {tournament.name}
