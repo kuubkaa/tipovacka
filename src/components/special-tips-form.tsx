@@ -173,10 +173,14 @@ export function SpecialTipsForm({
                               toggleAdvancer(round.key, t.code, round.targetCount)
                             }
                           />
-                          <span className="text-sm leading-none">
+                          <span className="inline-block text-sm leading-none">
                             {t.flagEmoji}
                           </span>
-                          <span className="truncate">{t.name}</span>
+                          {/* iOS Safari přelévá barvu emoji vlajky do textu na
+                              stejném řádku — currentColor to vynutí zpět. */}
+                          <span className="truncate [-webkit-text-fill-color:currentColor]">
+                            {t.name}
+                          </span>
                         </label>
                       );
                     })}
