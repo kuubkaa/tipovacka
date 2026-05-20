@@ -177,8 +177,12 @@ export function SpecialTipsForm({
                             {t.flagEmoji}
                           </span>
                           {/* iOS Safari přelévá barvu emoji vlajky do textu na
-                              stejném řádku — currentColor to vynutí zpět. */}
-                          <span className="truncate [-webkit-text-fill-color:currentColor]">
+                              stejném řádku — inline style vynutí výplň zpět na
+                              barvu dlaždice (černá/bílá) na všech platformách. */}
+                          <span
+                            className="truncate"
+                            style={{ WebkitTextFillColor: "currentColor" }}
+                          >
                             {t.name}
                           </span>
                         </label>
