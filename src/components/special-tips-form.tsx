@@ -8,6 +8,7 @@ import {
   type SaveSpecialTipsResult,
 } from "@/app/formular/actions";
 import { Button } from "@/components/ui/button";
+import { Flag } from "@/components/flag";
 import { cn } from "@/lib/utils";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 
@@ -173,18 +174,8 @@ export function SpecialTipsForm({
                               toggleAdvancer(round.key, t.code, round.targetCount)
                             }
                           />
-                          <span className="inline-block text-sm leading-none">
-                            {t.flagEmoji}
-                          </span>
-                          {/* iOS Safari přelévá barvu emoji vlajky do textu na
-                              stejném řádku — inline style vynutí výplň zpět na
-                              barvu dlaždice (černá/bílá) na všech platformách. */}
-                          <span
-                            className="truncate"
-                            style={{ WebkitTextFillColor: "currentColor" }}
-                          >
-                            {t.name}
-                          </span>
+                          <Flag emoji={t.flagEmoji} />
+                          <span className="truncate">{t.name}</span>
                         </label>
                       );
                     })}
