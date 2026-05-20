@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
-
-import { auth } from "@/auth";
+import { requireName } from "@/lib/auth-guards";
 import {
   GroupRankingsForm,
   type GroupRankingData,
@@ -32,10 +30,7 @@ const KNOCKOUT_ORDER: Record<string, { idx: number; label: string }> = {
 };
 
 export default async function FormularPage() {
-  const session = await auth();
-  if (!session?.user) {
-    redirect("/prihlaseni?callbackUrl=/formular");
-  }
+  const session = await requireName("/formular");
 
   const [matches, tips, teams, rankings, specialTips, knockoutAdvancers] =
     await Promise.all([

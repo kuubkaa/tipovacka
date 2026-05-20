@@ -116,7 +116,7 @@ Pokud `NODE_ENV=production`:
 2. ✅ ~~Auth (magic link)~~ — hotovo (2026-05-18). Auth.js v5 + Gmail SMTP, funguje na produkci s libovolným příjemcem.
 3. ✅ ~~Seed týmů a zápasů MS 2026~~ — hotovo (2026-05-18). 48 týmů, 12 skupin, 72 zápasů.
 4. ✅ ~~Tipovací formulář (skupinová fáze)~~ — hotovo (2026-05-18). /formular ukládá tipy na 72 zápasů.
-5. **Profil uživatele** — po prvním sign-inu vyžadovat vyplnění `name` (aktuálně null)
+5. ✅ ~~Profil uživatele~~ — hotovo (2026-05-20). Uživatel bez jména se přesměruje na `/profil` (guard `requireName` + redirect z `/` a `/formular`); po uložení se vrátí zpět.
 6. **Pořadí skupin** — tipy na 1.–4. místo v každé skupině (nový model `GroupRankingTip`)
 7. **Speciální tipy** — král střelců (skupinový + turnaj), vítěz turnaje (model `SpecialTip` už existuje)
 8. **Admin rozhraní** — zadávání reálných výsledků

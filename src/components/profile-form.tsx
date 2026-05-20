@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
 import { saveProfileAction, type SaveProfileResult } from "@/app/profil/actions";
@@ -13,10 +14,14 @@ const inputClass =
 export function ProfileForm({
   initialName,
   email,
+  redirectTo,
 }: {
   initialName: string | null;
   email: string;
+  /** Kam přejít po úspěšném uložení (např. zpět na /formular). */
+  redirectTo?: string;
 }) {
+  const router = useRouter();
   const [name, setName] = useState<string>(initialName ?? "");
   const [state, setState] = useState<SaveProfileResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -29,6 +34,9 @@ export function ProfileForm({
     startTransition(async () => {
       const result = await saveProfileAction(null, formData);
       setState(result);
+      if (result.status === "ok" && redirectTo) {
+        router.push(redirectTo);
+      }
     });
   }
 

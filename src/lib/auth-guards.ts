@@ -17,6 +17,19 @@ export async function requireSession(callbackUrl: string) {
 }
 
 /**
+ * Stejné jako requireSession, ale uživatel musí mít vyplněné jméno.
+ * Po prvním přihlášení je `name` null — takového uživatele pošleme
+ * na /profil, ať si jméno doplní (a po uložení se vrátí na callbackUrl).
+ */
+export async function requireName(callbackUrl: string) {
+  const session = await requireSession(callbackUrl);
+  if (!session.user.name) {
+    redirect(`/profil?next=${encodeURIComponent(callbackUrl)}`);
+  }
+  return session;
+}
+
+/**
  * Stejné jako requireSession, ale uživatel musí mít `isAdmin = true`.
  * Pokud je přihlášen ale není admin, redirect na "/" — zatím
  * bez separate "Access denied" stránky.

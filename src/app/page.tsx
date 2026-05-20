@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowRight, CalendarClock, Trophy } from "lucide-react";
 
 import { auth, signOut } from "@/auth";
@@ -16,6 +17,12 @@ const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
 export default async function Home() {
   const deadlinePassed = isDeadlinePassed();
   const session = await auth();
+
+  // Po prvním přihlášení je jméno prázdné — vynutíme jeho doplnění.
+  // Login defaultně přistává na "/", takže tohle chytne hned po přihlášení.
+  if (session?.user && !session.user.name) {
+    redirect("/profil?next=/");
+  }
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 text-white">
