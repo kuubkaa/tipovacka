@@ -160,8 +160,8 @@ export function SpecialTipsForm({
                             selected
                               ? "cursor-pointer border-slate-900 bg-slate-900 text-white"
                               : blocked
-                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
-                                : "cursor-pointer border-slate-200 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-100"
+                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-black opacity-60"
+                                : "cursor-pointer border-slate-200 bg-white text-black hover:border-slate-400 active:bg-slate-100"
                           )}
                         >
                           <input
