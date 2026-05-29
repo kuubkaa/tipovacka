@@ -58,8 +58,12 @@ Pokud `NODE_ENV=production`:
 - Nepoužívej deprecated balíčky
 
 ### Testy
-- E2E testy: Playwright (přidáme, až bude formulář funkční)
-- Testovací data prefixuj `[E2E]` + timestamp
+- E2E testy: Playwright — ✅ hotovo (2026-05-29). 12 testů v `e2e/`, viz `e2e/README.md`.
+  - Spuštění: `npm run test:e2e` (potřebuje `.env.local` — `npx vercel env pull .env.local`).
+  - Server běží na portu 3100 (vlastní, nekoliduje s `npm run dev`).
+  - Přihlášení v testech: programově přes DB session + cookie `authjs.session-token` (fixture `loginAs`).
+  - `AUTH_SECRET` ve `.env.local` přidán lokálně (Vercel ho má jen v produkčním prostředí).
+- Testovací data prefixuj `[E2E]` + timestamp. Každý test si tvoří vlastní `e2e-…@example.test` účet a po sobě uklízí; sdílená data (týmy, zápasy) se nemění.
 
 ### Role a přístupy (plán)
 - **Tipér** (běžný uživatel): vyplňuje a edituje vlastní tipy do deadlinu. Po deadlinu jen čte.
