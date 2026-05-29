@@ -1,8 +1,40 @@
 import NextAuth from "next-auth";
+import type { Adapter, AdapterSession } from "next-auth/adapters";
 import Nodemailer from "next-auth/providers/nodemailer";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 
 import { db } from "@/lib/db";
+
+// Prisma kód pro „záznam k operaci nenalezen".
+function isRecordNotFound(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    (err as { code?: unknown }).code === "P2025"
+  );
+}
+
+// Adaptér s odolným mazáním session: když uživatel přijde se starou
+// (expirovanou / ručně smazanou) session cookie a znovu se přihlásí,
+// Auth.js se pokusí starou session smazat z DB. Pokud už neexistuje,
+// `prisma.session.delete()` vyhodí P2025 a výchozí adaptér tím shodí
+// celý login (chyba „Configuration"). Tady to tiše ignorujeme.
+function makeResilientAdapter(): Adapter {
+  const base = PrismaAdapter(db);
+  return {
+    ...base,
+    deleteSession: async (sessionToken): Promise<AdapterSession | null> => {
+      try {
+        return (await base.deleteSession!(sessionToken)) as
+          | AdapterSession
+          | null;
+      } catch (err) {
+        if (isRecordNotFound(err)) return null;
+        throw err;
+      }
+    },
+  };
+}
 
 // V dev módu posíláme magic link do konzole (žádný email se neposílá),
 // abychom mohli testovat lokálně bez SMTP. V produkci Nodemailer pošle
@@ -27,7 +59,7 @@ const emailServer = {
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(db),
+  adapter: makeResilientAdapter(),
   session: { strategy: "database" },
   callbacks: {
     session({ session, user }) {
