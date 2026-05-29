@@ -19,6 +19,18 @@ export async function saveProfileAction(
   _prev: SaveProfileResult | null,
   formData: FormData
 ): Promise<SaveProfileResult> {
+  try {
+    return await saveProfile(formData);
+  } catch (err) {
+    console.error("[saveProfileAction]", err);
+    return {
+      status: "error",
+      message: "Něco se pokazilo při ukládání. Zkus to prosím za chvíli znovu.",
+    };
+  }
+}
+
+async function saveProfile(formData: FormData): Promise<SaveProfileResult> {
   const session = await auth();
   if (!session?.user?.id) return { status: "unauth" };
 

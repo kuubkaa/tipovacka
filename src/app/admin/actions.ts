@@ -22,6 +22,10 @@ async function requireAdminSession() {
   return session;
 }
 
+/** Jednotná hláška pro neočekávané chyby (výpadek DB apod.) v admin akcích. */
+const ADMIN_SAVE_ERROR =
+  "Něco se pokazilo při ukládání. Zkus to prosím za chvíli znovu.";
+
 export type SaveMatchResultsResult =
   | { status: "ok"; updated: number; cleared: number }
   | { status: "unauth" }
@@ -42,6 +46,17 @@ export type SaveMatchResultsResult =
  */
 export async function saveMatchResultsAction(
   _prev: SaveMatchResultsResult | null,
+  formData: FormData
+): Promise<SaveMatchResultsResult> {
+  try {
+    return await saveMatchResults(formData);
+  } catch (err) {
+    console.error("[saveMatchResultsAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function saveMatchResults(
   formData: FormData
 ): Promise<SaveMatchResultsResult> {
   const session = await auth();
@@ -149,6 +164,17 @@ export async function saveGroupResultsAction(
   _prev: SaveGroupResultsResult | null,
   formData: FormData
 ): Promise<SaveGroupResultsResult> {
+  try {
+    return await saveGroupResults(formData);
+  } catch (err) {
+    console.error("[saveGroupResultsAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function saveGroupResults(
+  formData: FormData
+): Promise<SaveGroupResultsResult> {
   const session = await requireAdminSession();
   if (!session) return { status: "forbidden" };
 
@@ -239,6 +265,17 @@ export async function saveKnockoutResultsAction(
   _prev: SaveKnockoutResultsResult | null,
   formData: FormData
 ): Promise<SaveKnockoutResultsResult> {
+  try {
+    return await saveKnockoutResults(formData);
+  } catch (err) {
+    console.error("[saveKnockoutResultsAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function saveKnockoutResults(
+  formData: FormData
+): Promise<SaveKnockoutResultsResult> {
   const session = await requireAdminSession();
   if (!session) return { status: "forbidden" };
 
@@ -296,6 +333,17 @@ const SPECIAL_RESULT_TYPES = [
 
 export async function saveSpecialResultsAction(
   _prev: SaveSpecialResultsResult | null,
+  formData: FormData
+): Promise<SaveSpecialResultsResult> {
+  try {
+    return await saveSpecialResults(formData);
+  } catch (err) {
+    console.error("[saveSpecialResultsAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function saveSpecialResults(
   formData: FormData
 ): Promise<SaveSpecialResultsResult> {
   const session = await requireAdminSession();
@@ -373,6 +421,17 @@ const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
  */
 export async function sendInvitationsAction(
   _prev: SendInvitationsResult | null,
+  formData: FormData
+): Promise<SendInvitationsResult> {
+  try {
+    return await sendInvitations(formData);
+  } catch (err) {
+    console.error("[sendInvitationsAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function sendInvitations(
   formData: FormData
 ): Promise<SendInvitationsResult> {
   const session = await auth();
@@ -536,6 +595,17 @@ export async function saveKnockoutFixturesAction(
   _prev: SaveKnockoutFixturesResult | null,
   formData: FormData
 ): Promise<SaveKnockoutFixturesResult> {
+  try {
+    return await saveKnockoutFixtures(formData);
+  } catch (err) {
+    console.error("[saveKnockoutFixturesAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function saveKnockoutFixtures(
+  formData: FormData
+): Promise<SaveKnockoutFixturesResult> {
   const session = await requireAdminSession();
   if (!session) return { status: "forbidden" };
 
@@ -651,6 +721,17 @@ export async function saveScorerAliasesAction(
   _prev: SaveScorerAliasesResult | null,
   formData: FormData
 ): Promise<SaveScorerAliasesResult> {
+  try {
+    return await saveScorerAliases(formData);
+  } catch (err) {
+    console.error("[saveScorerAliasesAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function saveScorerAliases(
+  formData: FormData
+): Promise<SaveScorerAliasesResult> {
   const session = await requireAdminSession();
   if (!session) return { status: "forbidden" };
 
@@ -708,6 +789,15 @@ export type DeleteUserResult =
 export async function deleteUserAction(
   userId: string
 ): Promise<DeleteUserResult> {
+  try {
+    return await deleteUser(userId);
+  } catch (err) {
+    console.error("[deleteUserAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function deleteUser(userId: string): Promise<DeleteUserResult> {
   const session = await auth();
   if (!session?.user?.id) return { status: "unauth" };
   if (!session.user.isAdmin) return { status: "forbidden" };

@@ -37,6 +37,18 @@ export async function saveTipsAction(
   _prev: SaveTipsResult | null,
   formData: FormData
 ): Promise<SaveTipsResult> {
+  try {
+    return await saveTips(formData);
+  } catch (err) {
+    console.error("[saveTipsAction]", err);
+    return {
+      status: "error",
+      message: "Něco se pokazilo při ukládání. Zkus to prosím za chvíli znovu.",
+    };
+  }
+}
+
+async function saveTips(formData: FormData): Promise<SaveTipsResult> {
   const session = await auth();
   if (!session?.user?.id) {
     return { status: "unauth" };
@@ -165,6 +177,20 @@ export type SaveGroupRankingsResult =
  */
 export async function saveGroupRankingsAction(
   _prev: SaveGroupRankingsResult | null,
+  formData: FormData
+): Promise<SaveGroupRankingsResult> {
+  try {
+    return await saveGroupRankings(formData);
+  } catch (err) {
+    console.error("[saveGroupRankingsAction]", err);
+    return {
+      status: "error",
+      message: "Něco se pokazilo při ukládání. Zkus to prosím za chvíli znovu.",
+    };
+  }
+}
+
+async function saveGroupRankings(
   formData: FormData
 ): Promise<SaveGroupRankingsResult> {
   const session = await auth();
@@ -324,6 +350,20 @@ const PLAYER_NAME_MAX = 80;
  */
 export async function saveSpecialTipsAction(
   _prev: SaveSpecialTipsResult | null,
+  formData: FormData
+): Promise<SaveSpecialTipsResult> {
+  try {
+    return await saveSpecialTips(formData);
+  } catch (err) {
+    console.error("[saveSpecialTipsAction]", err);
+    return {
+      status: "error",
+      message: "Něco se pokazilo při ukládání. Zkus to prosím za chvíli znovu.",
+    };
+  }
+}
+
+async function saveSpecialTips(
   formData: FormData
 ): Promise<SaveSpecialTipsResult> {
   const session = await auth();
