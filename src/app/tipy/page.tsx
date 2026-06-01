@@ -42,7 +42,8 @@ const STAGE_TO_KEY: Record<string, "R32" | "R16" | "QF" | "SF" | "F"> = {
 export default async function TipyPage() {
   const session = await requireSession("/tipy");
   const currentUserId = session.user.id;
-  const deadlinePassed = isDeadlinePassed();
+  const now = new Date();
+  const deadlinePassed = isDeadlinePassed(now);
 
   if (!deadlinePassed) {
     return (
@@ -228,6 +229,9 @@ export default async function TipyPage() {
                     const mts = tipsByMatch.get(m.id) ?? [];
                     const hasResult =
                       m.homeScore !== null && m.awayScore !== null;
+                    // Cizí tipy na zápas se odkryjí až po jeho výkopu.
+                    const revealed =
+                      new Date(m.dateUtc).getTime() <= now.getTime();
                     return (
                       <MatchCard
                         key={m.id}
@@ -238,6 +242,7 @@ export default async function TipyPage() {
                           homeScore: m.homeScore,
                           awayScore: m.awayScore,
                         }}
+                        revealed={revealed}
                         tips={mts.map((t) => ({
                           userId: t.userId,
                           userName: userById.get(t.userId)?.name ?? "?",
@@ -412,6 +417,7 @@ interface TeamRef {
 
 function MatchCard({
   match,
+  revealed,
   tips,
   currentUserId,
 }: {
@@ -422,6 +428,7 @@ function MatchCard({
     homeScore: number | null;
     awayScore: number | null;
   };
+  revealed: boolean;
   tips: Array<{
     userId: string;
     userName: string;
@@ -431,13 +438,18 @@ function MatchCard({
   }>;
   currentUserId: string;
 }) {
-  const sorted = [...tips].sort((a, b) => {
+  // Dokud zápas nezačal, vidí každý jen svůj vlastní tip — cizí jsou skryté.
+  const visibleTips = revealed
+    ? tips
+    : tips.filter((t) => t.userId === currentUserId);
+  const sorted = [...visibleTips].sort((a, b) => {
     if (a.points !== null && b.points !== null && a.points !== b.points) {
       return b.points - a.points;
     }
     return a.userName.localeCompare(b.userName, "cs-CZ");
   });
   const hasResult = match.homeScore !== null && match.awayScore !== null;
+  const hiddenCount = revealed ? 0 : tips.length - sorted.length;
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -472,9 +484,9 @@ function MatchCard({
         </div>
       </div>
 
-      {sorted.length === 0 ? (
+      {sorted.length === 0 && hiddenCount === 0 ? (
         <p className="px-4 py-3 text-center text-xs text-slate-400">
-          Nikdo nepodal tip
+          {revealed ? "Nikdo nepodal tip" : "Tipy se zobrazí po výkopu"}
         </p>
       ) : (
         <ul className="divide-y divide-slate-100">
@@ -514,6 +526,14 @@ function MatchCard({
               </li>
             );
           })}
+          {hiddenCount > 0 && (
+            <li className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs text-slate-400">
+              <Lock className="size-3" />
+              {hiddenCount === 1
+                ? "1 tip se zobrazí po výkopu"
+                : `${hiddenCount} tipů se zobrazí po výkopu`}
+            </li>
+          )}
         </ul>
       )}
     </div>
