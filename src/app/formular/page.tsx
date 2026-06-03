@@ -9,6 +9,7 @@ import {
 } from "@/components/special-tips-form";
 import { TipsForm, type SectionData } from "@/components/tips-form";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { db } from "@/lib/db";
 
 const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
@@ -64,13 +65,12 @@ export default async function FormularPage() {
       }),
     ]);
 
-  const STAGE_TO_KEY: Record<string, string> = {
-    ROUND_OF_32: "R32",
-    ROUND_OF_16: "R16",
-    QUARTER_FINAL: "QF",
-    SEMI_FINAL: "SF",
-    FINAL: "F",
-  };
+  // Stage → round key (R32/R16/QF/SF/BRONZ/F). Odvozeno z jednoho zdroje
+  // pravdy, aby žádné kolo (např. THIRD_PLACE → BRONZ) nechybělo a tip se
+  // při návratu na formulář vždy předvyplnil.
+  const STAGE_TO_KEY: Record<string, string> = Object.fromEntries(
+    KNOCKOUT_ADVANCERS_ROUNDS.map((r) => [r.stage, r.key])
+  );
 
   const tipsByMatch = new Map(tips.map((t) => [t.matchId, t]));
   const now = new Date();
