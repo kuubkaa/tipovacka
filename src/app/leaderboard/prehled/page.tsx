@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Lock } from "lucide-react";
 
 import { OverviewClient } from "@/components/overview-client";
-import { tournament } from "@/config/tournament";
+import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -14,9 +15,67 @@ import {
   scoreTournamentWinner,
 } from "@/lib/scoring";
 
+const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/Prague",
+});
+
 export default async function PrehledPage() {
   const session = await requireSession("/leaderboard/prehled");
   const currentUserId = session.user.id;
+  const now = new Date();
+
+  // Před uzávěrkou nikdo nevidí cizí tipy — celá matice je zamčená.
+  if (!isDeadlinePassed(now)) {
+    return (
+      <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
+        <header className="border-b border-slate-200 bg-white">
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+            <div>
+              <Link
+                href="/leaderboard"
+                className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
+              >
+                ← Pořadí
+              </Link>
+              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+                Kompletní přehled tipů
+              </h1>
+            </div>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <Lock className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold">Přehled je zamčený</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
+              Po startu turnaje a uzávěrce tipů se tu zobrazí kompletní přehled
+              tipů všech. Do té doby vidíš jen své vlastní ve{" "}
+              <Link
+                href="/formular"
+                className="font-medium text-slate-900 underline-offset-4 hover:underline"
+              >
+                formuláři
+              </Link>
+              .
+            </p>
+            <p className="mt-4 text-xs text-slate-500">
+              Uzávěrka:{" "}
+              <strong>
+                {deadlineDateFormatter.format(tournament.deadline)}
+              </strong>
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   const [
     users,
@@ -133,12 +192,17 @@ export default async function PrehledPage() {
       m.homeScore !== null && m.awayScore !== null
         ? `${m.homeScore}:${m.awayScore}`
         : "—";
+    // Cizí tipy na zápas se odkryjí až po jeho výkopu.
+    const revealed = new Date(m.dateUtc).getTime() <= now.getTime();
     columns.push({
       key: `m_${m.id}`,
       short: `${homeCode}–${awayCode}`,
       sub: `Sk. ${m.group ?? "?"}`,
       real: realScore,
       cell: (userId) => {
+        if (!revealed && userId !== currentUserId) {
+          return { text: "🔒", points: 0 };
+        }
         const t = matchTipMap.get(matchTipKey(userId, m.id));
         if (!t) return { text: "—", points: 0 };
         const points =
