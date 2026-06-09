@@ -192,17 +192,12 @@ export default async function PrehledPage() {
       m.homeScore !== null && m.awayScore !== null
         ? `${m.homeScore}:${m.awayScore}`
         : "—";
-    // Cizí tipy na zápas se odkryjí až po jeho výkopu.
-    const revealed = new Date(m.dateUtc).getTime() <= now.getTime();
     columns.push({
       key: `m_${m.id}`,
       short: `${homeCode}–${awayCode}`,
       sub: `Sk. ${m.group ?? "?"}`,
       real: realScore,
       cell: (userId) => {
-        if (!revealed && userId !== currentUserId) {
-          return { text: "🔒", points: 0 };
-        }
         const t = matchTipMap.get(matchTipKey(userId, m.id));
         if (!t) return { text: "—", points: 0 };
         const points =

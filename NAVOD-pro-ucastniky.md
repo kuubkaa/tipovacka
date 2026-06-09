@@ -3,14 +3,21 @@
 Vítej v naší tipovačce na **Mistrovství světa ve fotbale 2026** (USA, Kanada, Mexiko)! 🏆
 Tady je krok za krokem, jak na to.
 
-> **Web:** [ADRESA WEBU]
-> **Deadline hlavních tipů:** 11. června 2026, 21:00 (výkop úvodního zápasu)
+> **Web:** https://tipovacka-phi.vercel.app/
+> **Deadline všech tipů:** 11. června 2026, 21:00 (výkop úvodního zápasu)
+> **Startovné:** 400 Kč — hradí se u Rudy Čampy
+
+---
+
+## 💰 Startovné
+
+Účast v tipovačce stojí **400 Kč**. Startovné se hradí **u Rudy Čampy**.
 
 ---
 
 ## 1. Přihlášení (bez hesla)
 
-1. Otevři **[ADRESA WEBU]** a klikni na **„Přihlásit se“**.
+1. Otevři **https://tipovacka-phi.vercel.app/** a klikni na **„Přihlásit se“**.
 2. Zadej svůj **email** (ten, na který jsi dostal pozvánku) a klikni na **„Pošli mi přihlašovací link“**.
 3. Přijde ti email s přihlašovacím odkazem – **klikni v něm na tlačítko** a jsi přihlášený.
 
@@ -34,7 +41,7 @@ Klikni na **„Vyplnit tipy“**. Formulář má čtyři části:
 
 ### ⚽ Zápasy ve skupinách
 Tipuješ **přesné skóre** každého zápasu (např. 2:1).
-👉 Každý zápas má vlastní uzávěrku = **výkop daného utkání**. Můžeš tedy upravovat klidně až do poslední chvíle před zápasem.
+👉 Skupinové zápasy se uzavřou **výkopem úvodního zápasu turnaje**. Po něm už je měnit nejde.
 
 ### 🥇 Pořadí skupin
 U každé skupiny (A–L) seřadíš týmy na **1.–4. místo** a můžeš tipnout i **krále střelců skupiny** (jméno hráče napíšeš volně).
@@ -46,6 +53,7 @@ U každé skupiny (A–L) seřadíš týmy na **1.–4. místo** a můžeš tipn
 
 ### 🏆 Vyřazovací zápasy
 Odemknou se **až po skončení skupin**, kdy bude jasné, kdo proti komu hraje. Pak tipuješ skóre i tady.
+👉 Každé kolo (šestnáctifinále, osmifinále, …) se uzavře **výkopem svého prvního zápasu**.
 
 ➡️ Dole je tlačítko **„Uložit tipy“**. Nemusíš mít vyplněno všechno najednou – vrať se kdykoliv a dopiš zbytek.
 
@@ -55,19 +63,19 @@ Odemknou se **až po skončení skupin**, kdy bude jasné, kdo proti komu hraje.
 
 | Co | Do kdy |
 |---|---|
-| **Pořadí skupin + Speciální tipy** | **11. 6. 2026, 21:00** (pak se zamknou) |
-| **Tip na jednotlivý zápas** | **do výkopu** daného zápasu |
+| **Skupinové zápasy + pořadí skupin + speciály + postupy** | **11. 6. 2026, 21:00** — výkop úvodního zápasu |
+| **Vyřazovací zápasy** (pavouk) | výkop **prvního zápasu daného kola** |
 
-Po uplynutí deadlinu už danou sekci nezměníš.
+Výkopem úvodního zápasu se uzamkne celá skupinová část (zápasy, pořadí, speciály i postupy) **najednou**. Vyřazovací zápasy se pak tipují po kolech a každé kolo se uzavře výkopem svého prvního zápasu.
 
 ---
 
 ## 5. Do deadlinu nikdo nevidí cizí tipy 🤫
 
 Než turnaj začne, **vidíš jen své vlastní tipy**.
-Po startu turnaje se v sekci **„Zobrazit tipy všech“** odemknou tipy kamarádů a začne se bodovat.
+Výkopem úvodního zápasu se tipy uzavřou a zároveň se v sekci **„Zobrazit tipy všech“** odemknou **všechny** tipy kamarádů najednou — pak začne bodování.
 
-🔒 **Férové odkrývání:** cizí tip na konkrétní zápas se ostatním ukáže **až po jeho výkopu**. Dokud zápas nezačal, nikdo nevidí, jak jsi ho tipnul (a ty zase nevidíš jeho) — takže se nedá opisovat. U tipů na pozdější zápasy uvidíš poznámku „tipy se zobrazí po výkopu“.
+🔒 **Férové odkrývání:** dokud tipování běží, nikdo nevidí cizí tipy — takže se nedá opisovat. Všechno se odkryje až ve chvíli, kdy se tipování uzavře (výkop úvodního zápasu).
 
 ---
 

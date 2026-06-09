@@ -103,8 +103,8 @@ export default async function AdminPavoukPage() {
             >
               formuláři
             </Link>{" "}
-            novou sekci a budou tipovat skóre — každý zápas má vlastní deadline
-            (= výkop).
+            novou sekci a budou tipovat skóre — každé kolo se uzavře výkopem
+            svého prvního zápasu.
           </p>
           <p className="mt-2 text-xs text-slate-500">
             Datum a čas zadávej v lokálním (pražském) čase. Sekce „O 3. místo"

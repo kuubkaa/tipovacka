@@ -16,8 +16,8 @@ export type SaveTipsResult =
   | {
       status: "ok";
       saved: number;
-      /** Počet tipů přeskočených kvůli uzamčenému zápasu
-       *  (global deadline u skupin, výkop u vyřazovací fáze). */
+      /** Počet tipů přeskočených kvůli uzamčené fázi
+       *  (uzávěrka fáze = výkop jejího prvního zápasu už uplynul). */
       lockedSkipped: number;
     }
   | { status: "unauth" }
@@ -89,13 +89,25 @@ async function saveTips(formData: FormData): Promise<SaveTipsResult> {
     updates.push({ matchId, home, away });
   }
 
-  // Načti dotčené matche s dateUtc kvůli per-match deadline kontrole
+  // Načti stage dotčených zápasů (validace + zařazení do fáze)
   const matchIds = updates.map((u) => u.matchId);
-  const validMatches = await db.match.findMany({
+  const updatedMatches = await db.match.findMany({
     where: { id: { in: matchIds } },
-    select: { id: true, dateUtc: true },
+    select: { id: true, stage: true },
   });
-  const matchById = new Map(validMatches.map((m) => [m.id, m]));
+  const stageByMatch = new Map(updatedMatches.map((m) => [m.id, m.stage]));
+
+  // Uzávěrka každé fáze = výkop jejího prvního zápasu. Skupina se uzavře
+  // výkopem úvodního zápasu turnaje, každé vyřazovací kolo výkopem svého
+  // prvního zápasu (pavouk se tipuje po skupinách, kolo po kole).
+  const stageMins = await db.match.groupBy({
+    by: ["stage"],
+    _min: { dateUtc: true },
+  });
+  const firstKickoffByStage = new Map<string, Date>();
+  for (const s of stageMins) {
+    if (s._min.dateUtc) firstKickoffByStage.set(s.stage, s._min.dateUtc);
+  }
 
   const existingTips = await db.tip.findMany({
     where: { userId, matchId: { in: matchIds } },
@@ -106,11 +118,12 @@ async function saveTips(formData: FormData): Promise<SaveTipsResult> {
   let saved = 0;
   let lockedSkipped = 0;
   for (const u of updates) {
-    const m = matchById.get(u.matchId);
-    if (!m) continue; // Neznámý zápas
+    const stage = stageByMatch.get(u.matchId);
+    if (!stage) continue; // Neznámý zápas
 
-    // Per-zápas deadline = výkop (jednotně pro skupiny i vyřazovací).
-    if (now >= m.dateUtc) {
+    // Uzávěrka dané fáze = výkop jejího prvního zápasu.
+    const lockAt = firstKickoffByStage.get(stage);
+    if (lockAt && now >= lockAt) {
       lockedSkipped++;
       continue;
     }

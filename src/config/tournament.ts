@@ -13,8 +13,8 @@ export const tournament = {
   // Cesta k logu v adresáři /public
   logoUrl: "/logo.png",
 
-  // Deadline pro odevzdání tipů na pořadí skupin a speciálních tipů.
-  // Zápasy mají vlastní deadline = výkop daného utkání.
+  // Jeden společný deadline pro VŠECHNY tipy (zápasy, pořadí skupin,
+  // speciální tipy). Prvním výkopem se vše zamkne i zveřejní najednou.
   // 11. června 2026 21:00 SELČ = výkop úvodního zápasu MEX–RSA.
   deadline: new Date("2026-06-11T21:00:00+02:00"),
 
@@ -28,8 +28,9 @@ export const tournament = {
 export type Tournament = typeof tournament;
 
 /**
- * Pomocná funkce — vrací true, pokud už deadline uplynul
- * a mají se zobrazit tipy všech uživatelů.
+ * Pomocná funkce — vrací true, pokud už deadline (výkop prvního zápasu)
+ * uplynul. Po něm jsou všechny tipy uzamčené a zároveň se zveřejní
+ * tipy všech uživatelů.
  */
 export function isDeadlinePassed(now: Date = new Date()): boolean {
   return now.getTime() >= tournament.deadline.getTime();

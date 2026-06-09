@@ -45,8 +45,8 @@ interface MatchData {
   home: TeamRef;
   away: TeamRef;
   existingTip: { homeScore: number; awayScore: number } | null;
-  /// Per-zápas zámek (true pokud už nelze tipovat — výkop proběhl
-  /// nebo skupinový global deadline uplynul).
+  /// Zámek tipování (true pokud už uplynula uzávěrka dané fáze
+  /// = výkop jejího prvního zápasu).
   locked: boolean;
 }
 
@@ -116,7 +116,7 @@ export function TipsForm({ sections }: { sections: SectionData[] }) {
                 <Check className="size-4" /> Uloženo {state.saved} tipů
                 {state.lockedSkipped > 0 && (
                   <span className="ml-2 text-amber-700">
-                    ({state.lockedSkipped} uzamčeno — deadline / výkop)
+                    ({state.lockedSkipped} uzamčeno — tipování je uzavřené)
                   </span>
                 )}
               </span>

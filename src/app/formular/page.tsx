@@ -74,7 +74,17 @@ export default async function FormularPage() {
 
   const tipsByMatch = new Map(tips.map((t) => [t.matchId, t]));
   const now = new Date();
+  const nowMs = now.getTime();
   const globalDeadlinePassed = isDeadlinePassed(now);
+
+  // Uzávěrka každé fáze = výkop jejího prvního zápasu (skupina = úvodní
+  // zápas turnaje, každé vyřazovací kolo = jeho první zápas).
+  const firstKickoffByStage = new Map<string, number>();
+  for (const m of matches) {
+    const t = m.dateUtc.getTime();
+    const prev = firstKickoffByStage.get(m.stage);
+    if (prev === undefined || t < prev) firstKickoffByStage.set(m.stage, t);
+  }
 
   // --- Skupinové zápasy → sekce „Skupina A..L" ---
   const groupMatchSections = new Map<string, typeof matches>();
@@ -97,8 +107,8 @@ export default async function FormularPage() {
         home: m.homeTeam!,
         away: m.awayTeam!,
         existingTip: tipsByMatch.get(m.id) ?? null,
-        // Per-zápas zámek (výkop) — jednotné pravidlo pro skupiny i KO.
-        locked: now >= m.dateUtc,
+        // Společný zámek — výkop prvního zápasu uzamkne všechny tipy.
+        locked: globalDeadlinePassed,
       })),
     }));
 
@@ -126,8 +136,8 @@ export default async function FormularPage() {
         home: m.homeTeam!,
         away: m.awayTeam!,
         existingTip: tipsByMatch.get(m.id) ?? null,
-        // Per-zápas zámek: výkop proběhl
-        locked: now >= m.dateUtc,
+        // Zámek kola = výkop prvního zápasu daného kola.
+        locked: nowMs >= (firstKickoffByStage.get(m.stage) ?? Infinity),
       })),
     }));
 
@@ -250,19 +260,18 @@ export default async function FormularPage() {
         >
           {globalDeadlinePassed ? (
             <p>
-              <strong>Deadline pořadí + speciálních tipů uplynul</strong> (
-              {dateFormatter.format(tournament.deadline)}). Tyto sekce jsou
-              uzamčené. Jednotlivé zápasy jsou dál editovatelné individuálně
-              do jejich výkopu.
+              <strong>Skupinová část je uzamčená</strong> (
+              {dateFormatter.format(tournament.deadline)} — výkop úvodního
+              zápasu): skupinové zápasy, pořadí skupin i speciální tipy už
+              nelze měnit. Vyřazovací zápasy se tipují po kolech — každé kolo
+              do výkopu svého prvního zápasu.
             </p>
           ) : (
             <p>
-              <strong>Pořadí skupin</strong> a <strong>Speciální tipy</strong>{" "}
-              můžeš měnit do{" "}
+              Skupinové zápasy, pořadí skupin i speciální tipy můžeš měnit do{" "}
               <strong>{dateFormatter.format(tournament.deadline)}</strong>{" "}
-              (výkop úvodního zápasu). <strong>Tipy zápasů</strong> mají vlastní
-              deadline = výkop daného utkání, takže můžeš editovat klidně až do
-              poslední chvíle.
+              (výkop úvodního zápasu). Vyřazovací zápasy se tipují až po
+              skupinách a každé kolo se uzavře výkopem svého prvního zápasu.
             </p>
           )}
         </div>
@@ -321,8 +330,8 @@ export default async function FormularPage() {
                 Vyřazovací zápasy
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                Tipy na skóre konkrétních pávičkových zápasů. Každý zápas má
-                vlastní deadline = výkop (po něm už nejde editovat).
+                Tipy na skóre konkrétních pávičkových zápasů. Každé kolo se
+                uzavře výkopem svého prvního zápasu.
               </p>
             </div>
             <TipsForm sections={knockoutSections} />
