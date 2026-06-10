@@ -45,7 +45,7 @@ export default async function Home() {
             >
               {session.user.name ? (
                 <>
-                  <span className="sm:hidden">👤</span>
+                  <span className="sm:hidden">👤 Profil</span>
                   <span className="hidden sm:inline">
                     👤 {session.user.name}
                   </span>
