@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Loader2, Trophy } from "lucide-react";
+import { Check, Loader2, Lock, Trophy } from "lucide-react";
 
 import {
   saveSpecialTipsAction,
@@ -205,7 +205,9 @@ export function SpecialTipsForm({
             disabled={disabled}
             className={cn(inputClass)}
           >
-            <option value="">— vyber tým —</option>
+            <option value="">
+              {disabled ? "(nevyplněno)" : "— vyber tým —"}
+            </option>
             {orderedGroups.map(([group, ts]) => (
               <optgroup key={group} label={`Skupina ${group}`}>
                 {ts.map((t) => (
@@ -236,52 +238,60 @@ export function SpecialTipsForm({
               update("special_TOP_SCORER_TOURNAMENT", e.target.value)
             }
             disabled={disabled}
-            placeholder="Jméno hráče (např. Erling Haaland)"
+            placeholder={
+              disabled ? "(nevyplněno)" : "Jméno hráče (např. Erling Haaland)"
+            }
             maxLength={80}
             className={cn(inputClass)}
           />
         </div>
       </section>
 
-      <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="text-sm text-slate-600">
-            {state?.status === "ok" && (
-              <span className="inline-flex items-center gap-1.5 text-emerald-700">
-                <Check className="size-4" />
-                Uloženo {state.saved + state.advancersSaved}
-              </span>
-            )}
-            {state?.status === "deadline" && (
-              <span className="text-rose-700">
-                Deadline uplynul, nejde uložit.
-              </span>
-            )}
-            {state?.status === "unauth" && (
-              <span className="text-rose-700">Nejsi přihlášen.</span>
-            )}
-            {state?.status === "error" && (
-              <span className="text-rose-700">Chyba: {state.message}</span>
-            )}
-          </div>
-          <Button
-            type="submit"
-            disabled={disabled || pending}
-            className="h-10 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
-          >
-            {pending ? (
-              <>
-                <Loader2 className="mr-1.5 size-4 animate-spin" />
-                Ukládám…
-              </>
-            ) : disabled ? (
-              "Uzamčené"
-            ) : (
-              "Uložit speciální tipy"
-            )}
-          </Button>
+      {disabled ? (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          <Lock className="size-4 shrink-0" />
+          Uzamčeno — po uzávěrce už speciální tipy nejde měnit. Vidíš je jen
+          pro kontrolu.
         </div>
-      </div>
+      ) : (
+        <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="text-sm text-slate-600">
+              {state?.status === "ok" && (
+                <span className="inline-flex items-center gap-1.5 text-emerald-700">
+                  <Check className="size-4" />
+                  Uloženo {state.saved + state.advancersSaved}
+                </span>
+              )}
+              {state?.status === "deadline" && (
+                <span className="text-rose-700">
+                  Deadline uplynul, nejde uložit.
+                </span>
+              )}
+              {state?.status === "unauth" && (
+                <span className="text-rose-700">Nejsi přihlášen.</span>
+              )}
+              {state?.status === "error" && (
+                <span className="text-rose-700">Chyba: {state.message}</span>
+              )}
+            </div>
+            <Button
+              type="submit"
+              disabled={pending}
+              className="h-10 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
+            >
+              {pending ? (
+                <>
+                  <Loader2 className="mr-1.5 size-4 animate-spin" />
+                  Ukládám…
+                </>
+              ) : (
+                "Uložit speciální tipy"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -136,7 +136,7 @@ export default async function Home() {
             href="/formular"
             className="inline-flex h-14 items-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-slate-950 shadow-xl shadow-amber-500/30 ring-1 ring-amber-300/60 transition-all hover:-translate-y-0.5 hover:bg-amber-300 hover:shadow-amber-400/40 active:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-amber-300"
           >
-            Vyplnit tipy
+            {deadlinePassed ? "Tvoje tipy" : "Vyplnit tipy"}
             <ArrowRight className="size-5" />
           </Link>
 

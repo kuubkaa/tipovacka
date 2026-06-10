@@ -199,7 +199,7 @@ export default async function FormularPage() {
               ← {tournament.shortName}
             </a>
             <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              Vyplnit tipy
+              {globalDeadlinePassed ? "Tvoje tipy" : "Vyplnit tipy"}
             </h1>
           </div>
           <div className="min-w-0 text-right text-xs text-slate-500">
@@ -283,8 +283,9 @@ export default async function FormularPage() {
               Pořadí skupin
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              U každé skupiny vyber, kdo skončí na 1.–4. místě, a tipni jejího
-              krále střelců. Každý tým můžeš v dané skupině zvolit jen jednou.
+              {globalDeadlinePassed
+                ? "Tvůj tip na pořadí skupin a krále střelců. Po uzávěrce už ho nelze měnit — vidíš ho jen pro kontrolu."
+                : "U každé skupiny vyber, kdo skončí na 1.–4. místě, a tipni jejího krále střelců. Každý tým můžeš v dané skupině zvolit jen jednou."}
             </p>
           </div>
           <GroupRankingsForm
@@ -298,8 +299,9 @@ export default async function FormularPage() {
           <div className="mb-4">
             <h2 className="text-lg font-bold tracking-tight">Speciální tipy</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Postupující do vyřazovacích kol, vítěz turnaje a král střelců
-              celého turnaje. Pole můžeš nechat prázdná — uloží se jen vyplněná.
+              {globalDeadlinePassed
+                ? "Tvoje speciální tipy (postupující, vítěz turnaje, král střelců). Po uzávěrce už je nelze měnit — vidíš je jen pro kontrolu."
+                : "Postupující do vyřazovacích kol, vítěz turnaje a král střelců celého turnaje. Pole můžeš nechat prázdná — uloží se jen vyplněná."}
             </p>
           </div>
           <SpecialTipsForm
@@ -315,8 +317,9 @@ export default async function FormularPage() {
               Zápasy ve skupinách
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              Tipy na konkrétní skóre 72 zápasů základní fáze. Můžeš nechat
-              prázdné — ty se neukládají.
+              {globalDeadlinePassed
+                ? "Tvoje tipy na skóre 72 zápasů základní fáze. Po uzávěrce už je nelze měnit — vidíš je jen pro kontrolu."
+                : "Tipy na konkrétní skóre 72 zápasů základní fáze. Můžeš nechat prázdné — ty se neukládají."}
             </p>
           </div>
           <TipsForm sections={groupSections} />
