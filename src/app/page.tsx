@@ -40,11 +40,16 @@ export default async function Home() {
           <div className="flex items-center gap-3 text-white/80">
             <Link
               href="/profil"
-              className="hidden sm:inline-flex rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
+              className="inline-flex rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
               title="Upravit profil"
             >
               {session.user.name ? (
-                <>👤 {session.user.name}</>
+                <>
+                  <span className="sm:hidden">👤</span>
+                  <span className="hidden sm:inline">
+                    👤 {session.user.name}
+                  </span>
+                </>
               ) : (
                 <span className="text-amber-200">Doplň jméno</span>
               )}
