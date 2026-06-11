@@ -43,7 +43,7 @@ export function PaymentDueDialog({ qrUrl }: { qrUrl: string }) {
             <img
               src={qrUrl}
               alt="QR kód pro platbu startovného"
-              className="size-56 rounded-lg border border-slate-200 bg-white object-contain p-2"
+              className="max-h-72 w-auto max-w-full rounded-lg border border-slate-200 bg-white object-contain p-2"
             />
           </div>
 

@@ -15,7 +15,7 @@ export const tournament = {
 
   // QR kód pro platbu startovného (obrázek v /public). Po deadlinu se
   // nezaplaceným tipérům ukazuje okno s tímto QR. Vyměnitelné za nový ročník.
-  paymentQrUrl: "/qr-platba.png",
+  paymentQrUrl: "/qr-platba.jpg",
 
   // Jeden společný deadline pro VŠECHNY tipy (zápasy, pořadí skupin,
   // speciální tipy). Prvním výkopem se vše zamkne i zveřejní najednou.
