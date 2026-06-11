@@ -164,7 +164,58 @@ export default async function AdminKontrolaPage() {
           tipérů má kompletně vyplněno.
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        {/* Mobil: karty (tabulka by se nevešla na úzkou obrazovku). */}
+        <ul className="flex flex-col gap-3 sm:hidden">
+          {rows.map((r) => {
+            const complete = isComplete(r);
+            return (
+              <li
+                key={r.userId}
+                className="rounded-xl border border-slate-200 bg-white p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="font-medium text-slate-900">{r.name}</span>
+                    {r.isAdmin && (
+                      <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                        admin
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                      complete
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    )}
+                  >
+                    {complete ? "Hotovo" : `Chybí ${perUserTotal - doneSum(r)}`}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <CountChip label="Zápasy" done={r.matches} total={matchesTotal} />
+                  <CountChip label="Pořadí" done={r.rankings} total={RANKING_TOTAL} />
+                  <CountChip label="Speciální" done={r.specials} total={SPECIAL_TOTAL} />
+                  <CountChip label="Postupující" done={r.advancers} total={ADVANCERS_TOTAL} />
+                </div>
+
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <PaidToggle userId={r.userId} initialPaid={r.paid} />
+                </div>
+              </li>
+            );
+          })}
+          {rows.length === 0 && (
+            <li className="rounded-xl border border-slate-200 bg-white px-4 py-8 text-center text-slate-500">
+              Zatím žádní registrovaní tipéři.
+            </li>
+          )}
+        </ul>
+
+        {/* Desktop: plná tabulka. */}
+        <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white sm:block">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -257,5 +308,36 @@ function CountCell({ done, total }: { done: number; total: number }) {
         {done} / {total}
       </span>
     </td>
+  );
+}
+
+/** Stejná čísla jako CountCell, ale jako štítek do mobilní karty. */
+function CountChip({
+  label,
+  done,
+  total,
+}: {
+  label: string;
+  done: number;
+  total: number;
+}) {
+  const complete = done >= total && total > 0;
+  const empty = done === 0;
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+      <span className="text-slate-500">{label}</span>
+      <span
+        className={cn(
+          "font-medium tabular-nums",
+          complete
+            ? "text-emerald-700"
+            : empty
+              ? "text-slate-400"
+              : "text-amber-700"
+        )}
+      >
+        {done} / {total}
+      </span>
+    </div>
   );
 }
