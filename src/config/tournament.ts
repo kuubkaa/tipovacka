@@ -13,6 +13,10 @@ export const tournament = {
   // Cesta k logu v adresáři /public
   logoUrl: "/logo.png",
 
+  // QR kód pro platbu startovného (obrázek v /public). Po deadlinu se
+  // nezaplaceným tipérům ukazuje okno s tímto QR. Vyměnitelné za nový ročník.
+  paymentQrUrl: "/qr-platba.png",
+
   // Jeden společný deadline pro VŠECHNY tipy (zápasy, pořadí skupin,
   // speciální tipy). Prvním výkopem se vše zamkne i zveřejní najednou.
   // 11. června 2026 21:00 SELČ = výkop úvodního zápasu MEX–RSA.

@@ -2,7 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NavigationProgress } from "@/components/navigation-progress";
-import { tournament } from "@/config/tournament";
+import { PaymentDueDialog } from "@/components/payment-due-dialog";
+import { auth } from "@/auth";
+import { tournament, isDeadlinePassed } from "@/config/tournament";
+import { db } from "@/lib/db";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,6 +22,10 @@ export const metadata: Metadata = {
   description: tournament.subtitle,
 };
 
+// Layout čte přihlášení (cookie) kvůli upozornění na nezaplacené startovné,
+// takže každá stránka se musí vykreslit per-request (žádný statický cache).
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -29,11 +36,24 @@ export const viewport: Viewport = {
   themeColor: "#0f172a",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Po deadlinu připomeň nezaplaceným tipérům platbu startovného.
+  let showPaymentDue = false;
+  if (isDeadlinePassed()) {
+    const session = await auth();
+    if (session?.user?.id) {
+      const u = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { paid: true },
+      });
+      if (u && !u.paid) showPaymentDue = true;
+    }
+  }
+
   return (
     <html
       lang="cs"
@@ -42,6 +62,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <NavigationProgress />
         {children}
+        {showPaymentDue && (
+          <PaymentDueDialog qrUrl={tournament.paymentQrUrl} />
+        )}
       </body>
     </html>
   );
