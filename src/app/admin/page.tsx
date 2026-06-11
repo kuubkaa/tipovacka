@@ -169,8 +169,8 @@ export default async function AdminPage() {
           <AdminCard
             href="/admin/kontrola"
             icon={<ClipboardCheck className="size-5 text-emerald-600" />}
-            title="Kontrola vyplnění"
-            summary={<>Kdo má vyplněno všechno (zápasy, pořadí, speciální)</>}
+            title="Kontrola vyplnění a zaplacení"
+            summary={<>Kdo má vyplněno všechno a kdo zaplatil</>}
           />
 
           <AdminCard
