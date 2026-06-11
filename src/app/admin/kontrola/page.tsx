@@ -115,9 +115,13 @@ export default async function AdminKontrolaPage() {
     r.specials >= SPECIAL_TOTAL &&
     r.advancers >= ADVANCERS_TOTAL;
 
-  // Nezaplacení nahoru, pak nehotoví (nejvíc chybějících první), pak podle jména.
+  // Pořadí: 1) nezaplacení nahoru, 2) pak nehotoví (kdo nemá „Hotovo"),
+  // 3) v rámci toho nejvíc chybějících první, 4) nakonec podle jména.
   rows.sort((a, b) => {
     if (a.paid !== b.paid) return a.paid ? 1 : -1;
+    const ca = isComplete(a);
+    const cb = isComplete(b);
+    if (ca !== cb) return ca ? 1 : -1;
     const da = perUserTotal - doneSum(a);
     const db_ = perUserTotal - doneSum(b);
     if (da !== db_) return db_ - da;
