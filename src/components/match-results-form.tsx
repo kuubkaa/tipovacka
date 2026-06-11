@@ -168,7 +168,7 @@ function MatchRow({
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
         <div className="flex flex-col items-center gap-1 text-center">
           <span className="text-2xl leading-none">{match.home.flagEmoji}</span>
-          <span className="text-sm font-medium leading-tight text-slate-900 break-words">
+          <span className="text-sm font-medium leading-tight text-black break-words">
             {match.home.name}
           </span>
         </div>
@@ -201,7 +201,7 @@ function MatchRow({
 
         <div className="flex flex-col items-center gap-1 text-center">
           <span className="text-2xl leading-none">{match.away.flagEmoji}</span>
-          <span className="text-sm font-medium leading-tight text-slate-900 break-words">
+          <span className="text-sm font-medium leading-tight text-black break-words">
             {match.away.name}
           </span>
         </div>
