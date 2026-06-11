@@ -768,6 +768,44 @@ async function saveScorerAliases(
 }
 
 // =============================================================================
+// Stav zaplacení uživatele — admin přepíná v /admin/kontrola
+// =============================================================================
+
+export type SetUserPaidResult =
+  | { status: "ok"; paid: boolean }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "not-found" }
+  | { status: "error"; message: string };
+
+/**
+ * Admin akce — nastaví příznak `paid` (zaplatil/nezaplatil) danému uživateli.
+ */
+export async function setUserPaidAction(
+  userId: string,
+  paid: boolean
+): Promise<SetUserPaidResult> {
+  try {
+    const session = await requireAdminSession();
+    if (!session) return { status: "forbidden" };
+
+    const target = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!target) return { status: "not-found" };
+
+    await db.user.update({ where: { id: userId }, data: { paid } });
+
+    revalidatePath("/admin/kontrola");
+    return { status: "ok", paid };
+  } catch (err) {
+    console.error("[setUserPaidAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+// =============================================================================
 // Smazání uživatelského účtu
 // =============================================================================
 

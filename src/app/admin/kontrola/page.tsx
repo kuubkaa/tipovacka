@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { cn } from "@/lib/utils";
 
+import { PaidToggle } from "./paid-toggle";
+
 const GROUP_LETTERS = [
   "A", "B", "C", "D", "E", "F",
   "G", "H", "I", "J", "K", "L",
@@ -25,6 +27,7 @@ type Row = {
   userId: string;
   name: string;
   isAdmin: boolean;
+  paid: boolean;
   matches: number;
   rankings: number;
   specials: number;
@@ -44,7 +47,7 @@ export default async function AdminKontrolaPage() {
 
   const [users, matchCounts, rankings, specials, advancers] = await Promise.all([
     db.user.findMany({
-      select: { id: true, name: true, email: true, isAdmin: true },
+      select: { id: true, name: true, email: true, isAdmin: true, paid: true },
     }),
     db.tip.groupBy({
       by: ["userId"],
@@ -96,6 +99,7 @@ export default async function AdminKontrolaPage() {
     userId: u.id,
     name: u.name ?? u.email ?? "(bez jména)",
     isAdmin: u.isAdmin,
+    paid: u.paid,
     matches: matchByUser.get(u.id) ?? 0,
     rankings: rankingByUser.get(u.id) ?? 0,
     specials: specialByUser.get(u.id) ?? 0,
@@ -133,7 +137,7 @@ export default async function AdminKontrolaPage() {
               ← Admin
             </Link>
             <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              Kontrola vyplnění
+              Kontrola vyplnění a zaplacení
             </h1>
           </div>
           <p className="text-xs text-slate-500">
@@ -165,6 +169,7 @@ export default async function AdminKontrolaPage() {
                 <th className="px-3 py-3 text-center font-semibold">Speciální</th>
                 <th className="px-3 py-3 text-center font-semibold">Postupující</th>
                 <th className="px-3 py-3 text-center font-semibold">Stav</th>
+                <th className="px-3 py-3 text-center font-semibold">Zaplaceno</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -200,13 +205,16 @@ export default async function AdminKontrolaPage() {
                           : `Chybí ${perUserTotal - doneSum(r)}`}
                       </span>
                     </td>
+                    <td className="px-3 py-3 text-center">
+                      <PaidToggle userId={r.userId} initialPaid={r.paid} />
+                    </td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-slate-500"
                   >
                     Zatím žádní registrovaní tipéři.

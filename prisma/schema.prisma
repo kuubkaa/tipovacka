@@ -57,6 +57,8 @@ model User {
   /// Auth.js: URL obrázku (pro budoucí OAuth providery). U email loginu null.
   image         String?
   isAdmin             Boolean      @default(false)
+  /// Zaplatil vstupní poplatek? Admin přepíná ručně v /admin/kontrola.
+  paid                Boolean      @default(false)
   createdAt           DateTime     @default(now())
   accounts            Account[]
   sessions            Session[]
