@@ -652,6 +652,34 @@ function GroupRankingCard({
   );
 }
 
+/** Seznam týmů jako zalamující se čipy „vlaječka + název". */
+function TeamChipList({
+  codes,
+  teamByCode,
+  className,
+}: {
+  codes: string[];
+  teamByCode: Map<string, TeamRef>;
+  className?: string;
+}) {
+  return (
+    <span className={`flex flex-wrap gap-1 ${className ?? ""}`}>
+      {codes.map((c, i) => {
+        const t = teamByCode.get(c);
+        return (
+          <span
+            key={`${c}-${i}`}
+            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700"
+          >
+            <span>{t?.flagEmoji ?? ""}</span>
+            <span>{t?.name ?? c}</span>
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function AdvancersCard({
   label,
   targetCount,
@@ -692,16 +720,18 @@ function AdvancersCard({
             {pointsPerTeam} b / tým
           </span>
         </div>
-        <p className="mt-1 text-xs text-slate-600">
-          <strong>Reálně postoupili ({targetCount}): </strong>
+        <div className="mt-1 text-xs text-slate-600">
+          <strong>Reálně postoupili ({targetCount}):</strong>
           {realCodes && realCodes.length > 0 ? (
-            <span className="font-medium text-slate-700">
-              {realCodes.map((c) => flagOnly(c, teamByCode)).join(" ")}
-            </span>
+            <TeamChipList
+              codes={realCodes}
+              teamByCode={teamByCode}
+              className="mt-1"
+            />
           ) : (
-            <span className="text-slate-400">zatím nezadáno</span>
+            <span className="ml-1 text-slate-400">zatím nezadáno</span>
           )}
-        </p>
+        </div>
       </div>
       {scored.length === 0 ? (
         <p className="px-4 py-3 text-center text-xs text-slate-400">
@@ -744,13 +774,15 @@ function AdvancersCard({
                     </span>
                   </div>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {t.teamCodes.length > 0 ? (
-                    t.teamCodes.map((c) => flagOnly(c, teamByCode)).join(" ")
-                  ) : (
-                    <span className="text-slate-400">(nevyplněno)</span>
-                  )}
-                </p>
+                {t.teamCodes.length > 0 ? (
+                  <TeamChipList
+                    codes={t.teamCodes}
+                    teamByCode={teamByCode}
+                    className="mt-1.5"
+                  />
+                ) : (
+                  <p className="mt-1 text-xs text-slate-400">(nevyplněno)</p>
+                )}
               </li>
             );
           })}
@@ -852,11 +884,6 @@ function formatTeam(code: string, teamByCode: Map<string, TeamRef>): string {
   const t = teamByCode.get(code);
   if (!t) return code;
   return `${t.flagEmoji ?? ""} ${t.name}`.trim();
-}
-
-function flagOnly(code: string, teamByCode: Map<string, TeamRef>): string {
-  const t = teamByCode.get(code);
-  return t?.flagEmoji ?? code;
 }
 
 function groupBy<T, K>(arr: T[], key: (item: T) => K): Map<K, T[]> {
