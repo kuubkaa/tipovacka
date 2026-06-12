@@ -37,7 +37,7 @@ export default async function Home() {
 
       <header className="relative z-10 flex items-center justify-end px-6 py-4 text-sm">
         {session?.user ? (
-          <div className="flex items-center gap-3 text-white/80">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-white/80 sm:gap-3">
             <Link
               href="/profil"
               className="inline-flex rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
@@ -53,6 +53,13 @@ export default async function Home() {
               ) : (
                 <span className="text-amber-200">Doplň jméno</span>
               )}
+            </Link>
+            <Link
+              href="/pravidla"
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/20 hover:bg-white/10 hover:text-white"
+              title="Pravidla a bodování"
+            >
+              Pravidla
             </Link>
             <Link
               href="/leaderboard"
