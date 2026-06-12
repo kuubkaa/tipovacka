@@ -28,61 +28,49 @@ export default async function AdminMatchResultsPage() {
     orderBy: [{ stage: "asc" }, { group: "asc" }, { dateUtc: "asc" }],
   });
 
-  // --- Skupinová fáze: 12 sekcí „Skupina A..L" ---
-  const groupSectionsMap = new Map<string, typeof matches>();
-  for (const m of matches) {
-    if (m.stage !== "GROUP") continue;
-    if (!m.homeTeam || !m.awayTeam) continue;
-    const key = m.group ?? "?";
-    const list = groupSectionsMap.get(key) ?? [];
-    list.push(m);
-    groupSectionsMap.set(key, list);
-  }
-  const groupSections: SectionData[] = Array.from(groupSectionsMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([group, ms]) => ({
-      label: `Skupina ${group}`,
-      matches: ms.map((m) => ({
-        id: m.id,
-        matchKey: m.matchKey,
-        dateIso: m.dateUtc.toISOString(),
-        home: m.homeTeam!,
-        away: m.awayTeam!,
-        homeScore: m.homeScore,
-        awayScore: m.awayScore,
-      })),
-    }));
+  // Kontext zápasu pro chronologický seznam ("Skupina A" / "Osmifinále").
+  const matchContext = (m: (typeof matches)[number]) =>
+    m.stage === "GROUP"
+      ? `Skupina ${m.group ?? "?"}`
+      : KNOCKOUT_ORDER[m.stage]?.label ?? m.stage;
 
-  // --- Vyřazovací fáze: sekce per kolo (jen pokud admin přidal páry) ---
-  const knockoutSectionsMap = new Map<string, typeof matches>();
-  for (const m of matches) {
-    if (m.stage === "GROUP") continue;
-    if (!m.homeTeam || !m.awayTeam) continue;
-    const list = knockoutSectionsMap.get(m.stage) ?? [];
-    list.push(m);
-    knockoutSectionsMap.set(m.stage, list);
-  }
-  const knockoutSections: SectionData[] = Array.from(
-    knockoutSectionsMap.entries()
-  )
-    .sort(
-      ([a], [b]) =>
-        (KNOCKOUT_ORDER[a]?.idx ?? 99) - (KNOCKOUT_ORDER[b]?.idx ?? 99)
-    )
-    .map(([stage, ms]) => ({
-      label: KNOCKOUT_ORDER[stage]?.label ?? stage,
-      matches: ms.map((m) => ({
-        id: m.id,
-        matchKey: m.matchKey,
-        dateIso: m.dateUtc.toISOString(),
-        home: m.homeTeam!,
-        away: m.awayTeam!,
-        homeScore: m.homeScore,
-        awayScore: m.awayScore,
-      })),
-    }));
+  // Hratelné zápasy (mají oba týmy) seřazené podle výkopu.
+  const playable = matches
+    .filter((m) => m.homeTeam && m.awayTeam)
+    .sort((a, b) => a.dateUtc.getTime() - b.dateUtc.getTime());
 
-  const allSections = [...groupSections, ...knockoutSections];
+  const toData = (m: (typeof matches)[number]) => ({
+    id: m.id,
+    matchKey: m.matchKey,
+    dateIso: m.dateUtc.toISOString(),
+    context: matchContext(m),
+    home: m.homeTeam!,
+    away: m.awayTeam!,
+    homeScore: m.homeScore,
+    awayScore: m.awayScore,
+  });
+
+  // Bez zadaného výsledku nahoře (chronologicky), vyhodnocené na konci.
+  const isDone = (m: (typeof matches)[number]) =>
+    m.homeScore !== null && m.awayScore !== null;
+  const pending = playable.filter((m) => !isDone(m)).map(toData);
+  const done = playable.filter(isDone).map(toData);
+
+  const hasKnockout = playable.some((m) => m.stage !== "GROUP");
+
+  const allSections: SectionData[] = [];
+  if (pending.length > 0) {
+    allSections.push({
+      label: `Zbývá zadat (${pending.length})`,
+      matches: pending,
+    });
+  }
+  if (done.length > 0) {
+    allSections.push({
+      label: `Zadané výsledky (${done.length})`,
+      matches: done,
+    });
+  }
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
@@ -114,7 +102,7 @@ export default async function AdminMatchResultsPage() {
             Zadej skutečné skóre po skončení zápasu. Vyplň obě políčka, jinak
             se nic neuloží. Smazat zadaný výsledek lze vyprázdněním obou polí.
           </p>
-          {knockoutSections.length === 0 && (
+          {!hasKnockout && (
             <p className="mt-2 text-xs text-slate-500">
               Vyřazovací fáze se zobrazí, až přidáš dvojice v{" "}
               <Link

@@ -79,9 +79,20 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
     a.localeCompare(b)
   );
 
+  // Vyhodnocená kola (kompletně zadaná v DB) přesuň na konec, zbytek
+  // ponech v přirozeném pořadí. Vychází z uložených dat (ne z live editace),
+  // aby se pořadí během vyplňování nepřeskupovalo.
+  const roundIsDone = (key: string, target: number) =>
+    target > 0 && (data.existing[key]?.length ?? 0) === target;
+  const orderedRounds = [...KNOCKOUT_ADVANCERS_ROUNDS].sort((a, b) => {
+    const ad = roundIsDone(a.key, a.targetCount) ? 1 : 0;
+    const bd = roundIsDone(b.key, b.targetCount) ? 1 : 0;
+    return ad - bd;
+  });
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {KNOCKOUT_ADVANCERS_ROUNDS.map((round) => {
+      {orderedRounds.map((round) => {
         const selectedSet = advancers[round.key] ?? new Set<string>();
         return (
           <section
@@ -128,7 +139,7 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
                               ? "cursor-pointer border-slate-900 bg-slate-900 text-white"
                               : atMax
                                 ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-60"
-                                : "cursor-pointer border-slate-200 bg-white text-slate-700 hover:border-slate-400 active:bg-slate-100"
+                                : "cursor-pointer border-slate-200 bg-white text-black hover:border-slate-400 active:bg-slate-100"
                           )}
                         >
                           <input

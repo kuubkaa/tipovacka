@@ -32,6 +32,8 @@ interface MatchData {
   id: string;
   matchKey: string;
   dateIso: string;
+  /// Kontext zápasu pro chronologický seznam (např. "Skupina A" / "Osmifinále").
+  context?: string;
   home: TeamRef;
   away: TeamRef;
   /// Aktuální zadané skóre (null = ještě nezadáno)
@@ -164,6 +166,9 @@ function MatchRow({
     <li className="px-3 py-3 sm:px-4">
       <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
         {matchDateFormatter.format(date)}
+        {match.context && (
+          <span className="text-slate-300"> · {match.context}</span>
+        )}
       </p>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
         <div className="flex flex-col items-center gap-1 text-center">
