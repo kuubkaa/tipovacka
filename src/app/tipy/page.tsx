@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
 
+import { SiteHeader } from "@/components/site-header";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
@@ -48,7 +49,7 @@ export default async function TipyPage() {
   if (!deadlinePassed) {
     return (
       <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
-        <PageHeader title="Tipy všech" />
+        <SiteHeader active="tipy-vsech" />
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
             <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
@@ -173,48 +174,27 @@ export default async function TipyPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <div>
-            <Link
-              href="/"
-              className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
-            >
-              ← {tournament.shortName}
-            </Link>
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              Tipy všech
-            </h1>
-          </div>
-          <Link
-            href="/leaderboard"
-            className="text-xs font-medium text-amber-700 hover:text-amber-900"
-          >
-            🏆 Pořadí
-          </Link>
+      <SiteHeader active="tipy-vsech">
+        <div className="mx-auto flex w-full max-w-3xl gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
+          <a href="#zapasy" className="text-slate-600 hover:text-slate-900">
+            Zápasy
+          </a>
+          <a href="#skupiny" className="text-slate-600 hover:text-slate-900">
+            Pořadí skupin
+          </a>
+          <a href="#postupy" className="text-slate-600 hover:text-slate-900">
+            Postupy
+          </a>
+          <a href="#specialni" className="text-slate-600 hover:text-slate-900">
+            Speciální
+          </a>
         </div>
-        <nav className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex w-full max-w-3xl gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
-            <a href="#zapasy" className="text-slate-600 hover:text-slate-900">
-              Zápasy
-            </a>
-            <a href="#skupiny" className="text-slate-600 hover:text-slate-900">
-              Pořadí skupin
-            </a>
-            <a href="#postupy" className="text-slate-600 hover:text-slate-900">
-              Postupy
-            </a>
-            <a
-              href="#specialni"
-              className="text-slate-600 hover:text-slate-900"
-            >
-              Speciální
-            </a>
-          </div>
-        </nav>
-      </header>
+      </SiteHeader>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">
+          Tipy všech
+        </h1>
         {/* =================== Zápasy =================== */}
         <section id="zapasy" className="scroll-mt-32">
           <h2 className="mb-3 text-lg font-bold tracking-tight">Zápasy</h2>
@@ -384,26 +364,6 @@ export default async function TipyPage() {
 // =============================================================================
 // Pomocné komponenty
 // =============================================================================
-
-function PageHeader({ title }: { title: string }) {
-  return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-        <div>
-          <Link
-            href="/"
-            className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
-          >
-            ← {tournament.shortName}
-          </Link>
-          <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-            {title}
-          </h1>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 interface TeamRef {
   code: string;

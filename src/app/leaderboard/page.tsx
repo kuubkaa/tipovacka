@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Trophy } from "lucide-react";
 
 import { PrintButton } from "@/components/print-button";
+import { SiteHeader } from "@/components/site-header";
 import { tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
 import { SCORING, computeLeaderboard } from "@/lib/scoring";
@@ -32,33 +32,22 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900 print:bg-white">
-      <header className="border-b border-slate-200 bg-white print:hidden">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <div>
-            <Link
-              href="/"
-              className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
-            >
-              ← {tournament.shortName}
-            </Link>
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              Pořadí tipérů
-            </h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/leaderboard/prehled"
-              className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
-            >
-              Kompletní přehled
-            </Link>
-            <PrintButton />
-            <Trophy className="size-5 text-amber-500" />
-          </div>
+      <SiteHeader active="leaderboard">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-2 sm:px-6">
+          <Link
+            href="/leaderboard/prehled"
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+          >
+            Kompletní přehled
+          </Link>
+          <PrintButton />
         </div>
-      </header>
+      </SiteHeader>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8 print:max-w-full print:px-0 print:py-0">
+        <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl print:hidden">
+          Pořadí tipérů
+        </h1>
         {/* Tiskový header — zobrazí se jen při tisku */}
         <div className="mb-4 hidden print:block">
           <h1 className="text-2xl font-bold tracking-tight">

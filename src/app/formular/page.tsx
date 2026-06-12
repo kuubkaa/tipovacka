@@ -8,6 +8,7 @@ import {
   type SpecialTipsData,
 } from "@/components/special-tips-form";
 import { TipsForm, type SectionData } from "@/components/tips-form";
+import { SiteHeader } from "@/components/site-header";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { db } from "@/lib/db";
@@ -189,68 +190,41 @@ export default async function FormularPage() {
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <div className="min-w-0">
+      <SiteHeader active="tipy-vlastni">
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
+          <a
+            href="#poradi-skupin"
+            className="text-slate-600 hover:text-slate-900"
+          >
+            Pořadí skupin
+          </a>
+          <a
+            href="#specialni-tipy"
+            className="text-slate-600 hover:text-slate-900"
+          >
+            Speciální tipy
+          </a>
+          <a
+            href="#vysledky-zapasu"
+            className="text-slate-600 hover:text-slate-900"
+          >
+            Zápasy
+          </a>
+          {hasKnockoutMatches && (
             <a
-              href="/"
-              className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
+              href="#vyrazovaci-zapasy"
+              className="text-slate-600 hover:text-slate-900"
             >
-              ← {tournament.shortName}
+              Vyřazovací
             </a>
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              {globalDeadlinePassed ? "Tvoje tipy" : "Vyplnit tipy"}
-            </h1>
-          </div>
-          <div className="min-w-0 text-right text-xs text-slate-500">
-            <p className="hidden sm:block">Přihlášen jako</p>
-            <p
-              className="truncate font-medium text-slate-700"
-              title={session.user.email ?? ""}
-            >
-              {session.user.name ?? session.user.email}
-            </p>
-          </div>
+          )}
         </div>
-        <nav className="border-t border-slate-100 bg-white">
-          <div className="mx-auto flex w-full max-w-3xl items-center gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
-            <a
-              href="#poradi-skupin"
-              className="text-slate-600 hover:text-slate-900"
-            >
-              Pořadí skupin
-            </a>
-            <a
-              href="#specialni-tipy"
-              className="text-slate-600 hover:text-slate-900"
-            >
-              Speciální tipy
-            </a>
-            <a
-              href="#vysledky-zapasu"
-              className="text-slate-600 hover:text-slate-900"
-            >
-              Zápasy
-            </a>
-            {hasKnockoutMatches && (
-              <a
-                href="#vyrazovaci-zapasy"
-                className="text-slate-600 hover:text-slate-900"
-              >
-                Vyřazovací
-              </a>
-            )}
-            <a
-              href="/leaderboard"
-              className="ml-auto text-amber-700 hover:text-amber-900"
-            >
-              🏆 Pořadí
-            </a>
-          </div>
-        </nav>
-      </header>
+      </SiteHeader>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">
+          {globalDeadlinePassed ? "Tvoje tipy" : "Vyplnit tipy"}
+        </h1>
         <div
           className={`mb-6 rounded-lg border p-4 text-sm ${
             globalDeadlinePassed

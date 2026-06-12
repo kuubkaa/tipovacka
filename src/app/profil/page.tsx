@@ -1,8 +1,5 @@
-import Link from "next/link";
-import { UserCircle } from "lucide-react";
-
 import { ProfileForm } from "@/components/profile-form";
-import { tournament } from "@/config/tournament";
+import { SiteHeader } from "@/components/site-header";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 
@@ -28,24 +25,12 @@ export default async function ProfilePage({
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <div>
-            <Link
-              href="/"
-              className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
-            >
-              ← {tournament.shortName}
-            </Link>
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              Profil
-            </h1>
-          </div>
-          <UserCircle className="size-5 text-slate-500" />
-        </div>
-      </header>
+      <SiteHeader active="profil" />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">
+          Profil
+        </h1>
         {!user.name && (
           <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             <strong>Vítej! Než začneš, doplň si jméno a příjmení</strong>, ať tě

@@ -6,6 +6,7 @@ export default function PravidlaPage() {
     <PageShell
       title="Pravidla bodování"
       description="Jak se počítají body za jednotlivé tipy."
+      active="pravidla"
     >
       <div className="space-y-6">
         <Card title="Tipy zápasů">
