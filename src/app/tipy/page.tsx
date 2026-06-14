@@ -23,6 +23,20 @@ const matchDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   minute: "2-digit",
   timeZone: "Europe/Prague",
 });
+// Klíč pro seskupení podle kalendářního dne (stabilní, řaditelný)
+const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "Europe/Prague",
+});
+// Nadpis dne v sekci Zápasy
+const dayLabelFormatter = new Intl.DateTimeFormat("cs-CZ", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "Europe/Prague",
+});
 const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
   month: "long",
@@ -98,7 +112,7 @@ export default async function TipyPage() {
         homeTeam: { select: { code: true, name: true, flagEmoji: true } },
         awayTeam: { select: { code: true, name: true, flagEmoji: true } },
       },
-      orderBy: [{ group: "asc" }, { dateUtc: "asc" }],
+      orderBy: [{ dateUtc: "asc" }],
     }),
     db.tip.findMany({
       select: { userId: true, matchId: true, homeScore: true, awayScore: true },
@@ -150,16 +164,10 @@ export default async function TipyPage() {
   );
   const specialTipsByType = groupBy(specialTips, (t) => t.type);
 
-  // Match groups
-  const matchGroupsMap = new Map<string, typeof matches>();
-  for (const m of matches) {
-    const key = m.group ?? "?";
-    const list = matchGroupsMap.get(key) ?? [];
-    list.push(m);
-    matchGroupsMap.set(key, list);
-  }
-  const matchGroups = Array.from(matchGroupsMap.entries()).sort(
-    ([a], [b]) => a.localeCompare(b)
+  // Zápasy zobrazujeme chronologicky podle výkopu (orderBy v dotazu),
+  // seskupené po dnech jen pro přehledné nadpisy.
+  const matchDays = groupByPreservingOrder(matches, (m) =>
+    dayKeyFormatter.format(new Date(m.dateUtc))
   );
 
   // Pro pořadí skupin: seznam skupin (z teams)
@@ -199,10 +207,10 @@ export default async function TipyPage() {
         <section id="zapasy" className="scroll-mt-32">
           <h2 className="mb-3 text-lg font-bold tracking-tight">Zápasy</h2>
           <div className="space-y-10">
-            {matchGroups.map(([group, ms]) => (
-              <div key={group}>
+            {matchDays.map(([dayKey, ms]) => (
+              <div key={dayKey}>
                 <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-wider text-slate-500">
-                  Skupina {group}
+                  {dayLabelFormatter.format(new Date(ms[0].dateUtc))}
                 </h3>
                 <div className="space-y-3">
                   {ms.map((m) => {
@@ -855,4 +863,22 @@ function groupBy<T, K>(arr: T[], key: (item: T) => K): Map<K, T[]> {
     m.set(k, list);
   }
   return m;
+}
+
+/**
+ * Seskupí pole do dvojic [klíč, položky] a zachová pořadí prvního výskytu
+ * klíče (vstup musí být předem seřazený — tady chronologicky podle výkopu).
+ */
+function groupByPreservingOrder<T>(
+  arr: T[],
+  key: (item: T) => string
+): Array<[string, T[]]> {
+  const m = new Map<string, T[]>();
+  for (const item of arr) {
+    const k = key(item);
+    const list = m.get(k) ?? [];
+    list.push(item);
+    m.set(k, list);
+  }
+  return Array.from(m.entries());
 }
