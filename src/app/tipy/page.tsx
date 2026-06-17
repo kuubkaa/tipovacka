@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ChevronDown, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 
+import { MatchCard } from "./match-card";
 import { SiteHeader } from "@/components/site-header";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
@@ -220,13 +221,13 @@ export default async function TipyPage() {
                     return (
                       <MatchCard
                         key={m.id}
-                        match={{
-                          date: new Date(m.dateUtc),
-                          home: m.homeTeam!,
-                          away: m.awayTeam!,
-                          homeScore: m.homeScore,
-                          awayScore: m.awayScore,
-                        }}
+                        dateLabel={matchDateFormatter.format(
+                          new Date(m.dateUtc)
+                        )}
+                        home={m.homeTeam!}
+                        away={m.awayTeam!}
+                        homeScore={m.homeScore}
+                        awayScore={m.awayScore}
                         tips={mts.map((t) => ({
                           userId: t.userId,
                           userName: userById.get(t.userId)?.name ?? "?",
@@ -377,124 +378,6 @@ interface TeamRef {
   code: string;
   name: string;
   flagEmoji: string | null;
-}
-
-function MatchCard({
-  match,
-  tips,
-  currentUserId,
-}: {
-  match: {
-    date: Date;
-    home: TeamRef;
-    away: TeamRef;
-    homeScore: number | null;
-    awayScore: number | null;
-  };
-  tips: Array<{
-    userId: string;
-    userName: string;
-    homeScore: number;
-    awayScore: number;
-    points: number | null;
-  }>;
-  currentUserId: string;
-}) {
-  // Po uzávěrce (výkop prvního zápasu) jsou všechny tipy zveřejněné.
-  const sorted = [...tips].sort((a, b) => {
-    if (a.points !== null && b.points !== null && a.points !== b.points) {
-      return b.points - a.points;
-    }
-    return a.userName.localeCompare(b.userName, "cs-CZ");
-  });
-  const hasResult = match.homeScore !== null && match.awayScore !== null;
-
-  return (
-    <details className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <summary className="cursor-pointer list-none px-4 py-3 [&::-webkit-details-marker]:hidden">
-        <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
-          {matchDateFormatter.format(match.date)}
-        </p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-          <div className="flex flex-col items-center gap-1 text-center">
-            <span className="text-2xl leading-none">{match.home.flagEmoji}</span>
-            <span className="text-sm font-medium leading-tight text-black break-words">
-              {match.home.name}
-            </span>
-          </div>
-          <div className="flex flex-col items-center">
-            {hasResult ? (
-              <div className="rounded-lg bg-slate-900 px-3 py-1.5 text-base font-bold tabular-nums text-white">
-                {match.homeScore} : {match.awayScore}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
-                ještě nehrál
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-1 text-center">
-            <span className="text-2xl leading-none">{match.away.flagEmoji}</span>
-            <span className="text-sm font-medium leading-tight text-black break-words">
-              {match.away.name}
-            </span>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
-          <span className="group-open:hidden">
-            Zobrazit tipy všech ({sorted.length} {tipCountLabel(sorted.length)})
-          </span>
-          <span className="hidden group-open:inline">Skrýt tipy</span>
-          <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
-        </div>
-      </summary>
-
-      {sorted.length === 0 ? (
-        <p className="border-t border-slate-100 px-4 py-3 text-center text-xs text-slate-400">
-          Nikdo nepodal tip
-        </p>
-      ) : (
-        <ul className="divide-y divide-slate-100 border-t border-slate-100">
-          {sorted.map((t) => {
-            const isMe = t.userId === currentUserId;
-            return (
-              <li
-                key={t.userId}
-                className={`flex items-center justify-between gap-3 px-4 py-2 text-sm ${
-                  isMe ? "bg-amber-50" : ""
-                }`}
-              >
-                <span
-                  className={`truncate ${
-                    isMe ? "font-semibold text-slate-900" : "text-slate-700"
-                  }`}
-                >
-                  {t.userName}
-                  {isMe && (
-                    <span className="ml-1.5 text-xs text-amber-700">(ty)</span>
-                  )}
-                </span>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-700">
-                    {t.homeScore} : {t.awayScore}
-                  </span>
-                  {t.points !== null && (
-                    <span
-                      className={`w-10 text-right text-xs font-semibold tabular-nums ${
-                        t.points > 0 ? "text-emerald-700" : "text-slate-400"
-                      }`}
-                    >
-                      {t.points} b
-                    </span>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </details>
-  );
 }
 
 function GroupRankingCard({
@@ -859,13 +742,6 @@ function formatTeam(code: string, teamByCode: Map<string, TeamRef>): string {
   const t = teamByCode.get(code);
   if (!t) return code;
   return `${t.flagEmoji ?? ""} ${t.name}`.trim();
-}
-
-/** České skloňování: 1 tip, 2–4 tipy, 0 / 5+ tipů. */
-function tipCountLabel(n: number): string {
-  if (n === 1) return "tip";
-  if (n >= 2 && n <= 4) return "tipy";
-  return "tipů";
 }
 
 function groupBy<T, K>(arr: T[], key: (item: T) => K): Map<K, T[]> {
