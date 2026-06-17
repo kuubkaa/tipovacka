@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lock } from "lucide-react";
+import { ChevronDown, Lock } from "lucide-react";
 
 import { SiteHeader } from "@/components/site-header";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
@@ -410,44 +410,56 @@ function MatchCard({
   const hasResult = match.homeScore !== null && match.awayScore !== null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="border-b border-slate-100 px-4 py-3">
-        <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
-          {matchDateFormatter.format(match.date)}
-        </p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-          <div className="flex flex-col items-center gap-1 text-center">
-            <span className="text-2xl leading-none">{match.home.flagEmoji}</span>
-            <span className="text-sm font-medium leading-tight text-black break-words">
-              {match.home.name}
+    <details className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[11px] uppercase tracking-wide text-slate-400">
+              {matchDateFormatter.format(match.date)}
+            </p>
+            <span className="text-[11px] text-slate-400 tabular-nums">
+              {sorted.length} {tipCountLabel(sorted.length)}
             </span>
           </div>
-          <div className="flex flex-col items-center">
-            {hasResult ? (
-              <div className="rounded-lg bg-slate-900 px-3 py-1.5 text-base font-bold tabular-nums text-white">
-                {match.homeScore} : {match.awayScore}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
-                ještě nehrál
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col items-center gap-1 text-center">
-            <span className="text-2xl leading-none">{match.away.flagEmoji}</span>
-            <span className="text-sm font-medium leading-tight text-black break-words">
-              {match.away.name}
-            </span>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <span className="text-2xl leading-none">
+                {match.home.flagEmoji}
+              </span>
+              <span className="text-sm font-medium leading-tight text-black break-words">
+                {match.home.name}
+              </span>
+            </div>
+            <div className="flex flex-col items-center">
+              {hasResult ? (
+                <div className="rounded-lg bg-slate-900 px-3 py-1.5 text-base font-bold tabular-nums text-white">
+                  {match.homeScore} : {match.awayScore}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
+                  ještě nehrál
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col items-center gap-1 text-center">
+              <span className="text-2xl leading-none">
+                {match.away.flagEmoji}
+              </span>
+              <span className="text-sm font-medium leading-tight text-black break-words">
+                {match.away.name}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
+        <ChevronDown className="size-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+      </summary>
 
       {sorted.length === 0 ? (
-        <p className="px-4 py-3 text-center text-xs text-slate-400">
+        <p className="border-t border-slate-100 px-4 py-3 text-center text-xs text-slate-400">
           Nikdo nepodal tip
         </p>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-slate-100 border-t border-slate-100">
           {sorted.map((t) => {
             const isMe = t.userId === currentUserId;
             return (
@@ -486,7 +498,7 @@ function MatchCard({
           })}
         </ul>
       )}
-    </div>
+    </details>
   );
 }
 
@@ -852,6 +864,13 @@ function formatTeam(code: string, teamByCode: Map<string, TeamRef>): string {
   const t = teamByCode.get(code);
   if (!t) return code;
   return `${t.flagEmoji ?? ""} ${t.name}`.trim();
+}
+
+/** České skloňování: 1 tip, 2–4 tipy, 0 / 5+ tipů. */
+function tipCountLabel(n: number): string {
+  if (n === 1) return "tip";
+  if (n >= 2 && n <= 4) return "tipy";
+  return "tipů";
 }
 
 function groupBy<T, K>(arr: T[], key: (item: T) => K): Map<K, T[]> {
