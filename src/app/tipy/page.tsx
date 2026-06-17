@@ -411,47 +411,42 @@ function MatchCard({
 
   return (
     <details className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] uppercase tracking-wide text-slate-400">
-              {matchDateFormatter.format(match.date)}
-            </p>
-            <span className="text-[11px] text-slate-400 tabular-nums">
-              {sorted.length} {tipCountLabel(sorted.length)}
+      <summary className="cursor-pointer list-none px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
+          {matchDateFormatter.format(match.date)}
+        </p>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="text-2xl leading-none">{match.home.flagEmoji}</span>
+            <span className="text-sm font-medium leading-tight text-black break-words">
+              {match.home.name}
             </span>
           </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3">
-            <div className="flex flex-col items-center gap-1 text-center">
-              <span className="text-2xl leading-none">
-                {match.home.flagEmoji}
-              </span>
-              <span className="text-sm font-medium leading-tight text-black break-words">
-                {match.home.name}
-              </span>
-            </div>
-            <div className="flex flex-col items-center">
-              {hasResult ? (
-                <div className="rounded-lg bg-slate-900 px-3 py-1.5 text-base font-bold tabular-nums text-white">
-                  {match.homeScore} : {match.awayScore}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
-                  ještě nehrál
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col items-center gap-1 text-center">
-              <span className="text-2xl leading-none">
-                {match.away.flagEmoji}
-              </span>
-              <span className="text-sm font-medium leading-tight text-black break-words">
-                {match.away.name}
-              </span>
-            </div>
+          <div className="flex flex-col items-center">
+            {hasResult ? (
+              <div className="rounded-lg bg-slate-900 px-3 py-1.5 text-base font-bold tabular-nums text-white">
+                {match.homeScore} : {match.awayScore}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs text-slate-400">
+                ještě nehrál
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col items-center gap-1 text-center">
+            <span className="text-2xl leading-none">{match.away.flagEmoji}</span>
+            <span className="text-sm font-medium leading-tight text-black break-words">
+              {match.away.name}
+            </span>
           </div>
         </div>
-        <ChevronDown className="size-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+        <div className="mt-3 flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500">
+          <span className="group-open:hidden">
+            Zobrazit tipy všech ({sorted.length} {tipCountLabel(sorted.length)})
+          </span>
+          <span className="hidden group-open:inline">Skrýt tipy</span>
+          <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
+        </div>
       </summary>
 
       {sorted.length === 0 ? (
