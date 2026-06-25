@@ -137,7 +137,7 @@ export default async function TipyPage() {
       select: { userId: true, stage: true, teamCodes: true },
     }),
     db.tournamentResult.findMany({
-      select: { type: true, value: true },
+      select: { type: true, value: true, acceptedAliases: true },
     }),
     db.specialTip.findMany({
       select: { userId: true, type: true, value: true },
@@ -162,6 +162,9 @@ export default async function TipyPage() {
   const knockoutTipsByStage = groupBy(knockoutTips, (t) => t.stage as string);
   const tournamentResultByType = new Map(
     tournamentResults.map((r) => [r.type, r.value])
+  );
+  const tournamentAliasesByType = new Map(
+    tournamentResults.map((r) => [r.type, r.acceptedAliases])
   );
   const specialTipsByType = groupBy(specialTips, (t) => t.type);
 
@@ -263,6 +266,9 @@ export default async function TipyPage() {
               const realScorer = tournamentResultByType.get(
                 `TOP_SCORER_GROUP_${g}`
               );
+              const realScorerAliases = tournamentAliasesByType.get(
+                `TOP_SCORER_GROUP_${g}`
+              );
               const userTips = groupRankingTipsByGroup.get(g) ?? [];
               const userScorers = specialTipsByType.get(
                 `TOP_SCORER_GROUP_${g}`
@@ -277,6 +283,7 @@ export default async function TipyPage() {
                   group={g}
                   realRanking={realRanking}
                   realScorer={realScorer ?? null}
+                  realScorerAliases={realScorerAliases ?? []}
                   tips={userTips.map((t) => ({
                     userId: t.userId,
                     userName: userById.get(t.userId)?.name ?? "?",
@@ -357,7 +364,8 @@ export default async function TipyPage() {
                   points: scorePlayerName(
                     t.value,
                     tournamentResultByType.get("TOP_SCORER_TOURNAMENT"),
-                    SCORING.tournamentTopScorer
+                    SCORING.tournamentTopScorer,
+                    tournamentAliasesByType.get("TOP_SCORER_TOURNAMENT")
                   ),
                 })
               )}
@@ -384,6 +392,7 @@ function GroupRankingCard({
   group,
   realRanking,
   realScorer,
+  realScorerAliases,
   tips,
   teamByCode,
   currentUserId,
@@ -391,6 +400,7 @@ function GroupRankingCard({
   group: string;
   realRanking: string[] | null;
   realScorer: string | null;
+  realScorerAliases: string[];
   tips: Array<{
     userId: string;
     userName: string;
@@ -403,7 +413,12 @@ function GroupRankingCard({
   // Body per uživatel = pořadí + střelec
   const scored = tips.map((t) => {
     const rankingPts = scoreGroupRanking(t.teamCodes, realRanking);
-    const scorerPts = scorePlayerName(t.scorer, realScorer, SCORING.groupScorer);
+    const scorerPts = scorePlayerName(
+      t.scorer,
+      realScorer,
+      SCORING.groupScorer,
+      realScorerAliases
+    );
     return {
       ...t,
       rankingPts,
@@ -499,6 +514,15 @@ function GroupRankingCard({
                     <span className="text-slate-700">{t.scorer}</span>
                   ) : (
                     <span className="text-slate-400">(nevyplněno)</span>
+                  )}
+                  {realScorer && t.scorer && (
+                    <span
+                      className={`ml-1 font-semibold tabular-nums ${
+                        t.scorerPts > 0 ? "text-emerald-700" : "text-slate-400"
+                      }`}
+                    >
+                      (+{t.scorerPts} b)
+                    </span>
                   )}
                 </p>
               </li>
