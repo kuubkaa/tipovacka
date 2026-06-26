@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
 import {
@@ -76,6 +77,7 @@ export function KnockoutFixturesForm({
   );
   const [state, setState] = useState<SaveKnockoutFixturesResult | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   function update(key: string, value: string) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -91,6 +93,11 @@ export function KnockoutFixturesForm({
     startTransition(async () => {
       const result = await saveKnockoutFixturesAction(null, formData);
       setState(result);
+      // Po úspěšném uložení natáhni čerstvá data (revalidovaná na serveru),
+      // ať se uložené dvojice projeví v pavouku i ostatních stránkách.
+      if (result.status === "ok") {
+        router.refresh();
+      }
     });
   }
 

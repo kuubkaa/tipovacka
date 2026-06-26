@@ -692,6 +692,15 @@ async function saveKnockoutFixtures(
     }
   }
 
+  // Nové dvojice se musí projevit všude, kde se vyřazovací zápasy čtou:
+  // admin přehled, zadávání výsledků, pavouk i tipérské stránky.
+  revalidatePath("/admin");
+  revalidatePath("/admin/pavouk");
+  revalidatePath("/admin/zapasy");
+  revalidatePath("/formular");
+  revalidatePath("/tipy");
+  revalidatePath("/leaderboard/prehled");
+
   return { status: "ok", saved, skipped };
 }
 
