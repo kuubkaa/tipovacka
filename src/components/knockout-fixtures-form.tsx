@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 
@@ -112,6 +112,31 @@ export function KnockoutFixturesForm({
     a.localeCompare(b)
   );
 
+  // Pořadí slotů v každém kole: zadané zápasy podle výkopu (nejbližší první),
+  // prázdné sloty na konci. Počítá se ze serverového snapshotu (data.existing),
+  // takže se přeřadí až po uložení/refreshi — řádky tedy při psaní neposkakují.
+  const orderedKeys = useMemo(() => {
+    const dateByKey = new Map(
+      data.existing.map((e) => [e.matchKey, e.dateLocal])
+    );
+    const result: Record<string, string[]> = {};
+    for (const round of ROUNDS) {
+      const keys = Array.from({ length: round.count }, (_, i) =>
+        makeKey(round.prefix, i + 1)
+      );
+      keys.sort((a, b) => {
+        const da = dateByKey.get(a);
+        const db = dateByKey.get(b);
+        if (da && db) return da.localeCompare(db); // ISO řetězec = chronologie
+        if (da) return -1; // zadané sloty nahoru
+        if (db) return 1;
+        return 0; // oba prázdné → ponech pořadí
+      });
+      result[round.prefix] = keys;
+    }
+    return result;
+  }, [data.existing]);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {ROUNDS.map((round) => (
@@ -128,9 +153,7 @@ export function KnockoutFixturesForm({
             </h2>
           </header>
           <div className="divide-y divide-slate-100">
-            {Array.from({ length: round.count }, (_, idx) => {
-              const i = idx + 1;
-              const key = makeKey(round.prefix, i);
+            {(orderedKeys[round.prefix] ?? []).map((key) => {
               return (
                 <div key={key} className="p-4">
                   <div className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
