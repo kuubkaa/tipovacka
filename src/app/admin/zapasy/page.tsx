@@ -28,10 +28,18 @@ export default async function AdminMatchResultsPage() {
     orderBy: [{ stage: "asc" }, { group: "asc" }, { dateUtc: "asc" }],
   });
 
-  // Kontext zápasu pro chronologický seznam ("Skupina A" / "Osmifinále").
+  // Kontext zápasu pro řádek seznamu ("Skupina A" / "Osmifinále").
   const matchContext = (m: (typeof matches)[number]) =>
     m.stage === "GROUP"
       ? `Skupina ${m.group ?? "?"}`
+      : KNOCKOUT_ORDER[m.stage]?.label ?? m.stage;
+
+  // Název a pořadí fáze pro seskupení sekcí (skupiny → finále).
+  const stageRank = (m: (typeof matches)[number]) =>
+    m.stage === "GROUP" ? 0 : KNOCKOUT_ORDER[m.stage]?.idx ?? 99;
+  const stageLabel = (m: (typeof matches)[number]) =>
+    m.stage === "GROUP"
+      ? "Skupinová fáze"
       : KNOCKOUT_ORDER[m.stage]?.label ?? m.stage;
 
   // Hratelné zápasy (mají oba týmy) seřazené podle výkopu.
@@ -50,27 +58,44 @@ export default async function AdminMatchResultsPage() {
     awayScore: m.awayScore,
   });
 
-  // Bez zadaného výsledku nahoře (chronologicky), vyhodnocené na konci.
   const isDone = (m: (typeof matches)[number]) =>
     m.homeScore !== null && m.awayScore !== null;
-  const pending = playable.filter((m) => !isDone(m)).map(toData);
-  const done = playable.filter(isDone).map(toData);
+
+  // Seskupí zápasy podle fáze (skupiny → finále) do sekcí. `playable` je už
+  // seřazené podle výkopu, takže uvnitř fáze zůstane chronologie.
+  const bucketByStage = (
+    list: (typeof matches)[number][],
+    prefix: string
+  ): SectionData[] => {
+    const byRank = new Map<
+      number,
+      { label: string; matches: (typeof matches)[number][] }
+    >();
+    for (const m of list) {
+      const rank = stageRank(m);
+      if (!byRank.has(rank)) {
+        byRank.set(rank, { label: stageLabel(m), matches: [] });
+      }
+      byRank.get(rank)!.matches.push(m);
+    }
+    return [...byRank.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, v]) => ({
+        label: `${prefix}: ${v.label} (${v.matches.length})`,
+        matches: v.matches.map(toData),
+      }));
+  };
+
+  // Nezadané fáze nahoře (rozdělené po kolech), zadané pod nimi.
+  const pendingMatches = playable.filter((m) => !isDone(m));
+  const doneMatches = playable.filter(isDone);
 
   const hasKnockout = playable.some((m) => m.stage !== "GROUP");
 
-  const allSections: SectionData[] = [];
-  if (pending.length > 0) {
-    allSections.push({
-      label: `Zbývá zadat (${pending.length})`,
-      matches: pending,
-    });
-  }
-  if (done.length > 0) {
-    allSections.push({
-      label: `Zadané výsledky (${done.length})`,
-      matches: done,
-    });
-  }
+  const allSections: SectionData[] = [
+    ...bucketByStage(pendingMatches, "Zbývá zadat"),
+    ...bucketByStage(doneMatches, "Zadané"),
+  ];
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
