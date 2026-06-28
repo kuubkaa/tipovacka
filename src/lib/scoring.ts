@@ -180,6 +180,15 @@ export interface LeaderboardRow {
     advancers: number;
     special: number;
   };
+  /**
+   * Rozhodující kritéria při rovnosti bodů (v tomto pořadí):
+   *   1) správně tipnutý vítěz turnaje
+   *   2) vyšší počet přesně tipnutých výsledků zápasů
+   */
+  tiebreak: {
+    winnerCorrect: boolean;
+    exactCount: number;
+  };
 }
 
 /**
@@ -205,11 +214,10 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
     }),
     db.match.findMany({
       where: {
-        stage: "GROUP",
         homeScore: { not: null },
         awayScore: { not: null },
       },
-      select: { id: true, homeScore: true, awayScore: true },
+      select: { id: true, stage: true, homeScore: true, awayScore: true },
     }),
     db.tip.findMany({
       select: {
@@ -262,15 +270,24 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
 
   const rows: LeaderboardRow[] = users.map((u) => {
     let matchPts = 0;
+    let exactCount = 0;
     for (const t of matchTipsByUser.get(u.id) ?? []) {
       const m = matchById.get(t.matchId);
       if (!m || m.homeScore == null || m.awayScore == null) continue;
-      matchPts += scoreMatchTip(
-        t.homeScore,
-        t.awayScore,
-        m.homeScore,
-        m.awayScore
-      );
+      // Přesné výsledky pro tie-break se počítají z celého turnaje
+      // (skupiny i vyřazovací zápasy).
+      if (t.homeScore === m.homeScore && t.awayScore === m.awayScore) {
+        exactCount++;
+      }
+      // Body za zápas se zatím udělují jen za skupinovou fázi.
+      if (m.stage === "GROUP") {
+        matchPts += scoreMatchTip(
+          t.homeScore,
+          t.awayScore,
+          m.homeScore,
+          m.awayScore
+        );
+      }
     }
 
     let groupRankingPts = 0;
@@ -306,12 +323,15 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
 
     // Vítěz turnaje + král střelců turnaje
     let specialPts = 0;
+    let winnerCorrect = false;
     for (const t of specialTipsByUser.get(u.id) ?? []) {
       if (t.type === "TOURNAMENT_WINNER") {
-        specialPts += scoreTournamentWinner(
+        const winnerPts = scoreTournamentWinner(
           t.value,
           tournamentResultByType.get(t.type)?.value
         );
+        specialPts += winnerPts;
+        if (winnerPts > 0) winnerCorrect = true;
       } else if (t.type === "TOP_SCORER_TOURNAMENT") {
         const real = tournamentResultByType.get(t.type);
         specialPts += scorePlayerName(
@@ -338,12 +358,20 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
         advancers: advancerPts,
         special: specialPts,
       },
+      tiebreak: { winnerCorrect, exactCount },
     };
   });
 
-  // Sort: total desc, pak jméno asc (pro stabilní pořadí při remíze)
+  // Sort: 1) body desc, 2) správný vítěz turnaje, 3) víc přesných výsledků,
+  // 4) jméno asc (pro stabilní pořadí při úplné rovnosti).
   rows.sort((a, b) => {
     if (b.total !== a.total) return b.total - a.total;
+    if (a.tiebreak.winnerCorrect !== b.tiebreak.winnerCorrect) {
+      return a.tiebreak.winnerCorrect ? -1 : 1;
+    }
+    if (b.tiebreak.exactCount !== a.tiebreak.exactCount) {
+      return b.tiebreak.exactCount - a.tiebreak.exactCount;
+    }
     return (a.name ?? a.email).localeCompare(b.name ?? b.email, "cs-CZ");
   });
 

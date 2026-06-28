@@ -189,6 +189,11 @@ export default async function LeaderboardPage() {
             turnaje {SCORING.tournamentWinner} · král střelců turnaje{" "}
             {SCORING.tournamentTopScorer}
           </p>
+          <p>
+            <strong className="text-slate-700">Rovnost bodů:</strong>{" "}
+            rozhoduje 1) správně tipnutý vítěz turnaje, pak 2) vyšší počet
+            přesně tipnutých výsledků zápasů.
+          </p>
         </div>
       </main>
     </div>

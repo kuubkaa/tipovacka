@@ -100,6 +100,20 @@ export default function PravidlaPage() {
           </ul>
         </Card>
 
+        <Card title="Rovnost bodů">
+          <p className="text-sm text-slate-600">
+            Pokud má více tipérů stejný počet bodů, o lepším pořadí rozhoduje
+            postupně:
+          </p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+            <li>správně tipnutý vítěz turnaje,</li>
+            <li>
+              při další rovnosti vyšší počet správně tipnutých přesných
+              výsledků zápasů.
+            </li>
+          </ol>
+        </Card>
+
       </div>
     </PageShell>
   );
