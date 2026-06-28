@@ -27,7 +27,20 @@ export const tournament = {
 
   // Patička
   organizer: "Jakub Milotinský",
+
+  // Výhry pro první tři místa v pořadí tipérů (CZK). Zobrazují se na
+  // leaderboardu a zvýrazňují medailová místa. Pro nový ročník přepiš.
+  prizes: [
+    { place: 1, amountCzk: 3400, label: "1. místo" },
+    { place: 2, amountCzk: 2040, label: "2. místo" },
+    { place: 3, amountCzk: 1360, label: "3. místo" },
+  ],
 } as const;
+
+/** Formátuje částku v Kč podle českých zvyklostí (mezera jako oddělovač). */
+export function formatCzk(amount: number): string {
+  return `${amount.toLocaleString("cs-CZ")} Kč`;
+}
 
 export type Tournament = typeof tournament;
 

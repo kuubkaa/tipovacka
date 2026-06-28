@@ -2,9 +2,40 @@ import Link from "next/link";
 
 import { PrintButton } from "@/components/print-button";
 import { SiteHeader } from "@/components/site-header";
-import { tournament } from "@/config/tournament";
+import { formatCzk, tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
+import { cn } from "@/lib/utils";
 import { SCORING, computeLeaderboard } from "@/lib/scoring";
+
+// Vzhled medailových míst (1.–3.) — pozadí řádku, odznak pořadí, emoji
+// a styl karty s výhrou. Klíč = pořadí.
+const MEDALS: Record<
+  number,
+  { row: string; badge: string; emoji: string; card: string }
+> = {
+  1: {
+    row: "bg-amber-50 print:bg-white",
+    badge: "bg-amber-400 text-amber-950",
+    emoji: "🥇",
+    card: "border-amber-300 bg-amber-50 text-amber-900",
+  },
+  2: {
+    row: "bg-slate-100 print:bg-white",
+    badge: "bg-slate-300 text-slate-800",
+    emoji: "🥈",
+    card: "border-slate-300 bg-slate-100 text-slate-800",
+  },
+  3: {
+    row: "bg-orange-50 print:bg-white",
+    badge: "bg-orange-300 text-orange-950",
+    emoji: "🥉",
+    card: "border-orange-300 bg-orange-50 text-orange-900",
+  },
+};
+
+const prizeByPlace = new Map<number, (typeof tournament.prizes)[number]>(
+  tournament.prizes.map((p) => [p.place, p])
+);
 
 const printDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
@@ -56,6 +87,30 @@ export default async function LeaderboardPage() {
           <p className="mt-1 text-xs text-slate-600">
             Vytištěno {printDateFormatter.format(printedAt)}
           </p>
+        </div>
+
+        {/* Výhry pro první tři místa — vždy dobře viditelné nahoře. */}
+        <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-3">
+          {tournament.prizes.map((p) => {
+            const m = MEDALS[p.place];
+            return (
+              <div
+                key={p.place}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 rounded-xl border p-3 text-center print:border-slate-400",
+                  m?.card ?? "border-slate-200 bg-white text-slate-800"
+                )}
+              >
+                <span className="text-2xl leading-none">{m?.emoji}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wide">
+                  {p.label}
+                </span>
+                <span className="text-base font-bold tabular-nums sm:text-lg">
+                  {formatCzk(p.amountCzk)}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         {!tournamentStarted && (
@@ -148,13 +203,39 @@ function Row({
   rank: number;
 }) {
   const displayName = row.name ?? row.email;
+  const medal = MEDALS[rank];
+  const prize = prizeByPlace.get(rank);
   return (
-    <tr>
+    <tr className={medal?.row}>
       <td className="px-3 py-3 text-center font-semibold tabular-nums text-slate-700">
-        {rank}.
+        {medal ? (
+          <span
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold",
+              medal.badge
+            )}
+            aria-label={`${rank}. místo`}
+          >
+            {rank}
+          </span>
+        ) : (
+          `${rank}.`
+        )}
       </td>
       <td className="px-3 py-3">
-        <div className="font-medium text-slate-900">{displayName}</div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium text-slate-900">{displayName}</span>
+          {prize && (
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-xs font-semibold tabular-nums print:border-slate-400",
+                medal?.card ?? "border-slate-200 text-slate-700"
+              )}
+            >
+              {medal?.emoji} {formatCzk(prize.amountCzk)}
+            </span>
+          )}
+        </div>
         {/* Breakdown subtitle — jen pro web */}
         <div className="mt-0.5 text-xs text-slate-500 print:hidden">
           {row.breakdown.matches}z · {row.breakdown.groupRanking}sk ·{" "}
