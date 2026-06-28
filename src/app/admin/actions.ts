@@ -7,6 +7,7 @@ import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { isValidEmail, sendMail } from "@/lib/mailer";
+import { pragueLocalToUtc } from "@/lib/prague-time";
 import { normalizeName } from "@/lib/scoring";
 
 const GROUP_LETTERS = [
@@ -654,8 +655,9 @@ async function saveKnockoutFixtures(
         skipped++;
         continue;
       }
-      const dateUtc = new Date(dateStr);
-      if (isNaN(dateUtc.getTime())) {
+      // Vstup je pražský nástěnný čas → převedeme na UTC instant.
+      const dateUtc = pragueLocalToUtc(dateStr);
+      if (!dateUtc || isNaN(dateUtc.getTime())) {
         skipped++;
         continue;
       }

@@ -8,18 +8,7 @@ import {
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
-
-/**
- * Z UTC Date vytvoří string pro <input type="datetime-local"> v lokálním
- * (browser) timezone uživatele. Server ale render proběhne v UTC; tady
- * to vrátíme jako lokální čas Praha (přepočítáme manuálně), protože ten
- * je správný pro admina.
- */
-function toLocalDatetimeInput(d: Date): string {
-  const pragueOffsetMs = 2 * 60 * 60 * 1000; // léto = CEST = UTC+2; je léto v červnu-červenci
-  const local = new Date(d.getTime() + pragueOffsetMs);
-  return local.toISOString().slice(0, 16);
-}
+import { utcToPragueLocal } from "@/lib/prague-time";
 
 export default async function AdminPavoukPage() {
   const session = await requireAdmin("/admin/pavouk");
@@ -56,7 +45,7 @@ export default async function AdminPavoukPage() {
       matchKey: m.matchKey,
       homeCode: m.homeTeam!.code,
       awayCode: m.awayTeam!.code,
-      dateLocal: toLocalDatetimeInput(m.dateUtc),
+      dateLocal: utcToPragueLocal(m.dateUtc),
     }));
 
   const data: KnockoutFixturesData = {
