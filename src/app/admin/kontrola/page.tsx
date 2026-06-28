@@ -13,6 +13,17 @@ const GROUP_LETTERS = [
   "G", "H", "I", "J", "K", "L",
 ] as const;
 
+// Kola vyřazovací fáze pro rozpad sloupce „Zápasy". V tabulce se zobrazí
+// jen ta kola, ve kterých už existují tipovatelné zápasy (mají oba týmy).
+const KNOCKOUT_COLUMNS = [
+  { stage: "ROUND_OF_32", label: "Šestnáctifinále" },
+  { stage: "ROUND_OF_16", label: "Osmifinále" },
+  { stage: "QUARTER_FINAL", label: "Čtvrtfinále" },
+  { stage: "SEMI_FINAL", label: "Semifinále" },
+  { stage: "THIRD_PLACE", label: "O 3. místo" },
+  { stage: "FINAL", label: "Finále" },
+] as const;
+
 // Co se očekává v každé kategorii „kompletního" tipéra.
 const SPECIAL_TOTAL = 2 + GROUP_LETTERS.length; // vítěz + král střelců turnaje + 12 skupin
 const RANKING_TOTAL = GROUP_LETTERS.length; // 12 skupin
@@ -28,6 +39,11 @@ type Row = {
   name: string;
   isAdmin: boolean;
   paid: boolean;
+  /// Tipy na skupinové zápasy.
+  groupMatches: number;
+  /// Tipy na zápasy vyřazovací fáze po kolech (stage → počet).
+  knockout: Record<string, number>;
+  /// Součet všech zápasových tipů (skupiny + vyřazovací) pro výpočet kompletnosti.
   matches: number;
   rankings: number;
   specials: number;
@@ -40,19 +56,32 @@ export default async function AdminKontrolaPage() {
   // Hratelné zápasy = mají oba týmy (knockout placeholdery bez týmů nepočítáme).
   const tippableMatches = await db.match.findMany({
     where: { homeTeamId: { not: null }, awayTeamId: { not: null } },
-    select: { id: true },
+    select: { id: true, stage: true },
   });
   const tippableIds = tippableMatches.map((m) => m.id);
   const matchesTotal = tippableIds.length;
 
-  const [users, matchCounts, rankings, specials, advancers] = await Promise.all([
+  // Fáze podle zápasu + celkové počty zápasů na skupiny / jednotlivá kola.
+  const stageById = new Map(tippableMatches.map((m) => [m.id, m.stage as string]));
+  const groupTotal = tippableMatches.filter((m) => m.stage === "GROUP").length;
+  const knockoutTotals = new Map<string, number>();
+  for (const m of tippableMatches) {
+    if (m.stage === "GROUP") continue;
+    knockoutTotals.set(m.stage, (knockoutTotals.get(m.stage) ?? 0) + 1);
+  }
+  const knockoutTotal = matchesTotal - groupTotal;
+  // Jen kola s aspoň jedním zápasem se zobrazí jako sloupec.
+  const presentKnockout = KNOCKOUT_COLUMNS.filter(
+    (c) => (knockoutTotals.get(c.stage) ?? 0) > 0
+  );
+
+  const [users, tips, rankings, specials, advancers] = await Promise.all([
     db.user.findMany({
       select: { id: true, name: true, email: true, isAdmin: true, paid: true },
     }),
-    db.tip.groupBy({
-      by: ["userId"],
+    db.tip.findMany({
       where: { matchId: { in: tippableIds } },
-      _count: { _all: true },
+      select: { userId: true, matchId: true },
     }),
     db.groupRankingTip.findMany({
       select: { userId: true, teamCodes: true },
@@ -65,7 +94,23 @@ export default async function AdminKontrolaPage() {
     }),
   ]);
 
-  const matchByUser = new Map(matchCounts.map((c) => [c.userId, c._count._all]));
+  // Tipy na zápasy rozpadnuté na skupiny a jednotlivá kola vyřazovací fáze.
+  const groupByUser = new Map<string, number>();
+  const knockoutByUser = new Map<string, Map<string, number>>();
+  for (const t of tips) {
+    const stage = stageById.get(t.matchId);
+    if (!stage) continue;
+    if (stage === "GROUP") {
+      groupByUser.set(t.userId, (groupByUser.get(t.userId) ?? 0) + 1);
+    } else {
+      let m = knockoutByUser.get(t.userId);
+      if (!m) {
+        m = new Map();
+        knockoutByUser.set(t.userId, m);
+      }
+      m.set(stage, (m.get(stage) ?? 0) + 1);
+    }
+  }
 
   // Pořadí skupin: započítáme jen kompletní (4 týmy).
   const rankingByUser = new Map<string, number>();
@@ -95,16 +140,29 @@ export default async function AdminKontrolaPage() {
     advancersByUser.set(a.userId, (advancersByUser.get(a.userId) ?? 0) + 1);
   }
 
-  const rows: Row[] = users.map((u) => ({
-    userId: u.id,
-    name: u.name ?? u.email ?? "(bez jména)",
-    isAdmin: u.isAdmin,
-    paid: u.paid,
-    matches: matchByUser.get(u.id) ?? 0,
-    rankings: rankingByUser.get(u.id) ?? 0,
-    specials: specialByUser.get(u.id) ?? 0,
-    advancers: advancersByUser.get(u.id) ?? 0,
-  }));
+  const rows: Row[] = users.map((u) => {
+    const groupMatches = groupByUser.get(u.id) ?? 0;
+    const km = knockoutByUser.get(u.id);
+    const knockout: Record<string, number> = {};
+    let knockoutSum = 0;
+    for (const c of KNOCKOUT_COLUMNS) {
+      const v = km?.get(c.stage) ?? 0;
+      knockout[c.stage] = v;
+      knockoutSum += v;
+    }
+    return {
+      userId: u.id,
+      name: u.name ?? u.email ?? "(bez jména)",
+      isAdmin: u.isAdmin,
+      paid: u.paid,
+      groupMatches,
+      knockout,
+      matches: groupMatches + knockoutSum,
+      rankings: rankingByUser.get(u.id) ?? 0,
+      specials: specialByUser.get(u.id) ?? 0,
+      advancers: advancersByUser.get(u.id) ?? 0,
+    };
+  });
 
   const perUserTotal = matchesTotal + RANKING_TOTAL + SPECIAL_TOTAL + ADVANCERS_TOTAL;
   const doneSum = (r: Row) =>
@@ -195,11 +253,29 @@ export default async function AdminKontrolaPage() {
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <CountChip label="Zápasy" done={r.matches} total={matchesTotal} />
+                  <CountChip label="Skupiny" done={r.groupMatches} total={groupTotal} />
                   <CountChip label="Pořadí" done={r.rankings} total={RANKING_TOTAL} />
                   <CountChip label="Speciální" done={r.specials} total={SPECIAL_TOTAL} />
                   <CountChip label="Postupující" done={r.advancers} total={ADVANCERS_TOTAL} />
                 </div>
+
+                {presentKnockout.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                      Vyřazovací fáze
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {presentKnockout.map((c) => (
+                        <CountChip
+                          key={c.stage}
+                          label={c.label}
+                          done={r.knockout[c.stage]}
+                          total={knockoutTotals.get(c.stage) ?? 0}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-3 border-t border-slate-100 pt-3">
                   <PaidToggle userId={r.userId} initialPaid={r.paid} />
@@ -216,17 +292,75 @@ export default async function AdminKontrolaPage() {
 
         {/* Desktop: plná tabulka. */}
         <div className="hidden overflow-x-auto rounded-xl border border-slate-200 bg-white sm:block">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
+          <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-3 font-semibold">Tipér</th>
-                <th className="px-3 py-3 text-center font-semibold">Zápasy</th>
-                <th className="px-3 py-3 text-center font-semibold">Pořadí</th>
-                <th className="px-3 py-3 text-center font-semibold">Speciální</th>
-                <th className="px-3 py-3 text-center font-semibold">Postupující</th>
-                <th className="px-3 py-3 text-center font-semibold">Stav</th>
-                <th className="px-3 py-3 text-center font-semibold">Zaplaceno</th>
+              <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                <th
+                  rowSpan={2}
+                  className="border-b border-slate-200 px-4 py-3 align-bottom font-semibold"
+                >
+                  Tipér
+                </th>
+                <th
+                  rowSpan={2}
+                  className="border-b border-l border-slate-200 px-3 py-3 text-center align-bottom font-semibold"
+                >
+                  Skupiny
+                </th>
+                {presentKnockout.length > 0 && (
+                  <th
+                    colSpan={presentKnockout.length}
+                    className="border-b border-l border-slate-200 px-3 py-2 text-center font-semibold"
+                  >
+                    Vyřazovací fáze
+                  </th>
+                )}
+                <th
+                  rowSpan={2}
+                  className="border-b border-l border-slate-200 px-3 py-3 text-center align-bottom font-semibold"
+                >
+                  Pořadí
+                </th>
+                <th
+                  rowSpan={2}
+                  className="border-b border-slate-200 px-3 py-3 text-center align-bottom font-semibold"
+                >
+                  Speciální
+                </th>
+                <th
+                  rowSpan={2}
+                  className="border-b border-slate-200 px-3 py-3 text-center align-bottom font-semibold"
+                >
+                  Postupující
+                </th>
+                <th
+                  rowSpan={2}
+                  className="border-b border-slate-200 px-3 py-3 text-center align-bottom font-semibold"
+                >
+                  Stav
+                </th>
+                <th
+                  rowSpan={2}
+                  className="border-b border-slate-200 px-3 py-3 text-center align-bottom font-semibold"
+                >
+                  Zaplaceno
+                </th>
               </tr>
+              {presentKnockout.length > 0 && (
+                <tr className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                  {presentKnockout.map((c, i) => (
+                    <th
+                      key={c.stage}
+                      className={cn(
+                        "border-b border-slate-200 px-2 py-1.5 text-center font-medium",
+                        i === 0 && "border-l"
+                      )}
+                    >
+                      {c.label}
+                    </th>
+                  ))}
+                </tr>
+              )}
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((r) => {
@@ -243,8 +377,24 @@ export default async function AdminKontrolaPage() {
                         </span>
                       )}
                     </td>
-                    <CountCell done={r.matches} total={matchesTotal} />
-                    <CountCell done={r.rankings} total={RANKING_TOTAL} />
+                    <CountCell
+                      done={r.groupMatches}
+                      total={groupTotal}
+                      className="border-l border-slate-200"
+                    />
+                    {presentKnockout.map((c, i) => (
+                      <CountCell
+                        key={c.stage}
+                        done={r.knockout[c.stage]}
+                        total={knockoutTotals.get(c.stage) ?? 0}
+                        className={i === 0 ? "border-l border-slate-200" : undefined}
+                      />
+                    ))}
+                    <CountCell
+                      done={r.rankings}
+                      total={RANKING_TOTAL}
+                      className="border-l border-slate-200"
+                    />
                     <CountCell done={r.specials} total={SPECIAL_TOTAL} />
                     <CountCell done={r.advancers} total={ADVANCERS_TOTAL} />
                     <td className="px-3 py-3 text-center">
@@ -270,7 +420,7 @@ export default async function AdminKontrolaPage() {
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={7 + presentKnockout.length}
                     className="px-4 py-8 text-center text-slate-500"
                   >
                     Zatím žádní registrovaní tipéři.
@@ -282,19 +432,29 @@ export default async function AdminKontrolaPage() {
         </div>
 
         <p className="mt-4 text-xs text-slate-500">
-          Kompletní = {matchesTotal} zápasů · {RANKING_TOTAL} pořadí skupin ·{" "}
-          {SPECIAL_TOTAL} speciálních tipů · {ADVANCERS_TOTAL} postupových kol.
+          Kompletní = {groupTotal} zápasů skupin
+          {knockoutTotal > 0 && ` · ${knockoutTotal} zápasů vyřazovací fáze`} ·{" "}
+          {RANKING_TOTAL} pořadí skupin · {SPECIAL_TOTAL} speciálních tipů ·{" "}
+          {ADVANCERS_TOTAL} postupových kol.
         </p>
       </main>
     </div>
   );
 }
 
-function CountCell({ done, total }: { done: number; total: number }) {
+function CountCell({
+  done,
+  total,
+  className,
+}: {
+  done: number;
+  total: number;
+  className?: string;
+}) {
   const complete = done >= total && total > 0;
   const empty = done === 0;
   return (
-    <td className="px-3 py-3 text-center">
+    <td className={cn("px-3 py-3 text-center", className)}>
       <span
         className={cn(
           "font-medium tabular-nums",
