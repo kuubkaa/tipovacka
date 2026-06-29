@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import type { Session } from "next-auth";
 import type { Adapter, AdapterSession } from "next-auth/adapters";
 import Nodemailer from "next-auth/providers/nodemailer";
 import { PrismaAdapter } from "@auth/prisma-adapter";
@@ -58,7 +59,12 @@ const emailServer = {
   },
 };
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const {
+  handlers,
+  signIn,
+  signOut,
+  auth: nextAuth,
+} = NextAuth({
   adapter: makeResilientAdapter(),
   session: { strategy: "database" },
   callbacks: {
@@ -93,3 +99,42 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     verifyRequest: "/zkontroluj-email",
   },
 });
+
+// ── Dev auto-login ────────────────────────────────────────────────────────
+// Aby se při lokálním vývoji nemuselo pořád dokola přihlašovat přes magic
+// link, lze ve `.env.local` nastavit `DEV_AUTOLOGIN_EMAIL=<email>`. Pak
+// `auth()` v dev módu vrátí session toho uživatele i bez cookie.
+//
+// BEZPEČNOST: aktivní jen když `NODE_ENV === "development"`. V produkci
+// (Vercel) se `nextAuth()` vrací beze změny, i kdyby env var nějak unikla.
+const devAutoLoginEmail = isDev
+  ? process.env.DEV_AUTOLOGIN_EMAIL?.trim() || undefined
+  : undefined;
+
+export const auth = async (): Promise<Session | null> => {
+  const real = await nextAuth();
+  if (real?.user || !devAutoLoginEmail) return real;
+
+  const user = await db.user.findUnique({
+    where: { email: devAutoLoginEmail },
+  });
+  if (!user) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[DEV auto-login] Uživatel ${devAutoLoginEmail} není v DB — ` +
+        `přihlas se jednou přes magic link, pak už pojede automaticky.`
+    );
+    return real;
+  }
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      isAdmin: user.isAdmin,
+    },
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  };
+};

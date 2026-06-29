@@ -18,6 +18,31 @@ interface TeamRef {
   group: string;
 }
 
+// Z jakého kola se berou týmy do nabídky daného kola. R32 = všechny týmy
+// (skupinová fáze); každé další kolo nabízí jen ty, co postoupily v kole
+// předchozím. „O 3. místo" i finále čerpají ze čtyř semifinalistů.
+const PREV_ROUND_KEY: Record<string, string | null> = {
+  R32: null,
+  R16: "R32",
+  QF: "R16",
+  SF: "QF",
+  BRONZ: "SF",
+  F: "SF",
+};
+
+// Kola, která (tranzitivně) závisí na daném kole — pro úklid při odznačení.
+function descendantsOf(key: string): string[] {
+  const isAncestor = (target: string, of: string): boolean => {
+    let c = PREV_ROUND_KEY[of];
+    while (c) {
+      if (c === target) return true;
+      c = PREV_ROUND_KEY[c];
+    }
+    return false;
+  };
+  return Object.keys(PREV_ROUND_KEY).filter((k) => isAncestor(key, k));
+}
+
 export interface KnockoutResultsData {
   teams: TeamRef[];
   existing: Record<string, string[]>;
@@ -45,10 +70,17 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
       const set = new Set(prev[roundKey] ?? []);
       if (set.has(code)) {
         set.delete(code);
-      } else {
-        if (set.size >= max) return prev;
-        set.add(code);
+        // Tým vypadl z tohoto kola → vyřaď ho i ze všech navazujících kol,
+        // ať tam nezůstane "duch" (vybraný, ale už nezobrazitelný).
+        const next: Record<string, Set<string>> = { ...prev, [roundKey]: set };
+        for (const desc of descendantsOf(roundKey)) {
+          const ds = new Set(next[desc] ?? []);
+          if (ds.delete(code)) next[desc] = ds;
+        }
+        return next;
       }
+      if (set.size >= max) return prev;
+      set.add(code);
       return { ...prev, [roundKey]: set };
     });
   }
@@ -94,6 +126,21 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {orderedRounds.map((round) => {
         const selectedSet = advancers[round.key] ?? new Set<string>();
+        // Týmy k nabídnutí: R32 = všechny; další kola jen postupující
+        // z předchozího kola (živě podle aktuálního výběru).
+        const prevKey = PREV_ROUND_KEY[round.key];
+        const available = prevKey ? advancers[prevKey] ?? new Set<string>() : null;
+        const groupsForRound = available
+          ? orderedGroups
+              .map(
+                ([g, ts]) =>
+                  [g, ts.filter((t) => available.has(t.code))] as [
+                    string,
+                    TeamRef[],
+                  ]
+              )
+              .filter(([, ts]) => ts.length > 0)
+          : orderedGroups;
         return (
           <section
             key={round.key}
@@ -115,7 +162,12 @@ export function KnockoutResultsForm({ data }: { data: KnockoutResultsData }) {
               </span>
             </header>
             <div className="space-y-3 p-4">
-              {orderedGroups.map(([group, ts]) => (
+              {groupsForRound.length === 0 && (
+                <p className="text-xs text-slate-500">
+                  Nejdřív označ postupující v předchozím kole.
+                </p>
+              )}
+              {groupsForRound.map(([group, ts]) => (
                 <div key={group}>
                   <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
                     Skupina {group}

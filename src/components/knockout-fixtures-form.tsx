@@ -43,6 +43,18 @@ const ROUNDS = [
   { prefix: "F", label: "Finále", count: 1 },
 ] as const;
 
+// Z jakého kola se berou týmy do nabídky. R32 = všechny týmy (skupinová fáze),
+// každé další kolo nabídne jen týmy nasazené do předchozího kola (tedy ty, co
+// jsou ještě ve hře). „O 3. místo" i finále čerpají z týmů v semifinále.
+const PREV_ROUND: Record<string, string | null> = {
+  R32: null,
+  R16: "R32",
+  QF: "R16",
+  SF: "QF",
+  BRONZ: "SF",
+  F: "SF",
+};
+
 function makeKey(prefix: string, idx: number) {
   return `${prefix}-${idx}`;
 }
@@ -101,16 +113,48 @@ export function KnockoutFixturesForm({
     });
   }
 
-  // Seskupit týmy po skupinách pro select optgroup
-  const teamsByGroup = new Map<string, TeamRef[]>();
-  for (const t of data.teams) {
-    const list = teamsByGroup.get(t.group) ?? [];
-    list.push(t);
-    teamsByGroup.set(t.group, list);
-  }
-  const orderedGroups = Array.from(teamsByGroup.entries()).sort(([a], [b]) =>
-    a.localeCompare(b)
-  );
+  // Nabídka týmů pro selecty každého kola, seskupená po skupinách (optgroup).
+  // R32 = všechny týmy. Další kola = jen týmy nasazené do předchozího kola
+  // (z uloženého serverového snapshotu), takže vypadlé týmy se už nenabízejí.
+  const groupsByRound = useMemo(() => {
+    const buildGroups = (teams: TeamRef[]): [string, TeamRef[]][] => {
+      const byGroup = new Map<string, TeamRef[]>();
+      for (const t of teams) {
+        const list = byGroup.get(t.group) ?? [];
+        list.push(t);
+        byGroup.set(t.group, list);
+      }
+      return Array.from(byGroup.entries()).sort(([a], [b]) =>
+        a.localeCompare(b)
+      );
+    };
+
+    const teamByCode = new Map(data.teams.map((t) => [t.code, t]));
+    const codesInRound = (prefix: string) => {
+      const codes = new Set<string>();
+      for (const e of data.existing) {
+        if (e.matchKey.startsWith(`${prefix}-`)) {
+          codes.add(e.homeCode);
+          codes.add(e.awayCode);
+        }
+      }
+      return codes;
+    };
+
+    const result: Record<string, [string, TeamRef[]][]> = {};
+    for (const round of ROUNDS) {
+      const prev = PREV_ROUND[round.prefix];
+      if (!prev) {
+        result[round.prefix] = buildGroups(data.teams);
+      } else {
+        const teams = Array.from(codesInRound(prev))
+          .map((c) => teamByCode.get(c))
+          .filter((t): t is TeamRef => Boolean(t));
+        result[round.prefix] = buildGroups(teams);
+      }
+    }
+    return result;
+  }, [data.teams, data.existing]);
 
   // Pořadí slotů v každém kole: zadané zápasy podle výkopu (nejbližší první),
   // prázdné sloty na konci. Počítá se ze serverového snapshotu (data.existing),
@@ -170,7 +214,7 @@ export function KnockoutFixturesForm({
                       aria-label="Domácí tým"
                     >
                       <option value="">— domácí —</option>
-                      {orderedGroups.map(([g, ts]) => (
+                      {(groupsByRound[round.prefix] ?? []).map(([g, ts]) => (
                         <optgroup key={g} label={`Skupina ${g}`}>
                           {ts.map((t) => (
                             <option key={t.code} value={t.code}>
@@ -191,7 +235,7 @@ export function KnockoutFixturesForm({
                       aria-label="Hostující tým"
                     >
                       <option value="">— hosté —</option>
-                      {orderedGroups.map(([g, ts]) => (
+                      {(groupsByRound[round.prefix] ?? []).map(([g, ts]) => (
                         <optgroup key={g} label={`Skupina ${g}`}>
                           {ts.map((t) => (
                             <option key={t.code} value={t.code}>
