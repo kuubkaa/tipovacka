@@ -16,13 +16,14 @@ import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
  *   jinak 0.
  *
  * Maximum při všech tipech přesných a všech výsledcích zadaných:
- *   72 × 10 (zápasy)                  =  720
+ *   72 × 10 (skupinové zápasy)        =  720
+ *   32 × 10 (vyřazovací zápasy)       =  320
  *   12 × (4×2 + 7) (skupiny)          =  180
  *   12 × 20 (králové sk. střelců)     =  240
  *   advancers (32×10 + 16×20 + 8×30 + 4×40 + 2×50 + 2×50) = 1240
  *   60 + 60 (vítěz + střelec turnaje) =  120
  *   ───────────────────────────────────
- *   Celkem max:                       ≈ 2 480 b
+ *   Celkem max:                       ≈ 2 800 b
  */
 export const SCORING = {
   match: {
@@ -279,15 +280,13 @@ export async function computeLeaderboard(): Promise<LeaderboardRow[]> {
       if (t.homeScore === m.homeScore && t.awayScore === m.awayScore) {
         exactCount++;
       }
-      // Body za zápas se zatím udělují jen za skupinovou fázi.
-      if (m.stage === "GROUP") {
-        matchPts += scoreMatchTip(
-          t.homeScore,
-          t.awayScore,
-          m.homeScore,
-          m.awayScore
-        );
-      }
+      // Body za skóre zápasu — skupinová i vyřazovací fáze (stejné schéma).
+      matchPts += scoreMatchTip(
+        t.homeScore,
+        t.awayScore,
+        m.homeScore,
+        m.awayScore
+      );
     }
 
     let groupRankingPts = 0;

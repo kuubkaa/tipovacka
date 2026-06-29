@@ -47,12 +47,14 @@ const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   timeZone: "Europe/Prague",
 });
 
-const STAGE_TO_KEY: Record<string, "R32" | "R16" | "QF" | "SF" | "F"> = {
-  ROUND_OF_32: "R32",
-  ROUND_OF_16: "R16",
-  QUARTER_FINAL: "QF",
-  SEMI_FINAL: "SF",
-  FINAL: "F",
+// Pořadí + názvy vyřazovacích kol (stejné jako ve formuláři).
+const KNOCKOUT_ORDER: Record<string, { idx: number; label: string }> = {
+  ROUND_OF_32: { idx: 1, label: "Šestnáctifinále" },
+  ROUND_OF_16: { idx: 2, label: "Osmifinále" },
+  QUARTER_FINAL: { idx: 3, label: "Čtvrtfinále" },
+  SEMI_FINAL: { idx: 4, label: "Semifinále" },
+  THIRD_PLACE: { idx: 5, label: "O 3. místo" },
+  FINAL: { idx: 6, label: "Finále" },
 };
 
 export default async function TipyPage() {
@@ -97,6 +99,7 @@ export default async function TipyPage() {
   // Načti všechno potřebné paralelně
   const [
     matches,
+    knockoutMatches,
     matchTips,
     users,
     teams,
@@ -109,6 +112,14 @@ export default async function TipyPage() {
   ] = await Promise.all([
     db.match.findMany({
       where: { stage: "GROUP" },
+      include: {
+        homeTeam: { select: { code: true, name: true, flagEmoji: true } },
+        awayTeam: { select: { code: true, name: true, flagEmoji: true } },
+      },
+      orderBy: [{ dateUtc: "asc" }],
+    }),
+    db.match.findMany({
+      where: { stage: { not: "GROUP" } },
       include: {
         homeTeam: { select: { code: true, name: true, flagEmoji: true } },
         awayTeam: { select: { code: true, name: true, flagEmoji: true } },
@@ -174,6 +185,29 @@ export default async function TipyPage() {
     dayKeyFormatter.format(new Date(m.dateUtc))
   );
 
+  // --- Vyřazovací zápasy: seskup po kolech, odhal kolo až po výkopu jeho
+  // prvního zápasu (stejný zámek jako ve formuláři). Tipy na skóre už máme
+  // v `tipsByMatch` (dotaz na Tip není omezený na skupiny).
+  const nowMs = now.getTime();
+  const knockoutByStage = new Map<string, typeof knockoutMatches>();
+  for (const m of knockoutMatches) {
+    if (!m.homeTeam || !m.awayTeam) continue;
+    const list = knockoutByStage.get(m.stage) ?? [];
+    list.push(m);
+    knockoutByStage.set(m.stage, list);
+  }
+  const revealedKnockoutRounds = Array.from(knockoutByStage.entries())
+    .map(([stage, ms]) => ({
+      stage,
+      label: KNOCKOUT_ORDER[stage]?.label ?? stage,
+      idx: KNOCKOUT_ORDER[stage]?.idx ?? 99,
+      matches: ms,
+      firstKickoffMs: Math.min(...ms.map((m) => m.dateUtc.getTime())),
+    }))
+    .filter((r) => nowMs >= r.firstKickoffMs)
+    .sort((a, b) => a.idx - b.idx);
+  const hasRevealedKnockout = revealedKnockoutRounds.length > 0;
+
   // Pro pořadí skupin: seznam skupin (z teams)
   const groupLetters = Array.from(
     new Set(
@@ -191,6 +225,14 @@ export default async function TipyPage() {
           <a href="#zapasy" className="text-slate-600 hover:text-slate-900">
             Zápasy
           </a>
+          {hasRevealedKnockout && (
+            <a
+              href="#vyrazovaci"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Vyřazovací
+            </a>
+          )}
           <a href="#skupiny" className="text-slate-600 hover:text-slate-900">
             Pořadí skupin
           </a>
@@ -254,6 +296,58 @@ export default async function TipyPage() {
             ))}
           </div>
         </section>
+
+        {/* =================== Vyřazovací zápasy =================== */}
+        {hasRevealedKnockout && (
+          <section id="vyrazovaci" className="mt-16 scroll-mt-32">
+            <h2 className="mb-3 text-lg font-bold tracking-tight">
+              Vyřazovací zápasy
+            </h2>
+            <div className="space-y-10">
+              {revealedKnockoutRounds.map((round) => (
+                <div key={round.stage}>
+                  <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                    {round.label}
+                  </h3>
+                  <div className="space-y-3">
+                    {round.matches.map((m) => {
+                      const mts = tipsByMatch.get(m.id) ?? [];
+                      const hasResult =
+                        m.homeScore !== null && m.awayScore !== null;
+                      return (
+                        <MatchCard
+                          key={m.id}
+                          dateLabel={matchDateFormatter.format(
+                            new Date(m.dateUtc)
+                          )}
+                          home={m.homeTeam!}
+                          away={m.awayTeam!}
+                          homeScore={m.homeScore}
+                          awayScore={m.awayScore}
+                          tips={mts.map((t) => ({
+                            userId: t.userId,
+                            userName: userById.get(t.userId)?.name ?? "?",
+                            homeScore: t.homeScore,
+                            awayScore: t.awayScore,
+                            points: hasResult
+                              ? scoreMatchTip(
+                                  t.homeScore,
+                                  t.awayScore,
+                                  m.homeScore!,
+                                  m.awayScore!
+                                )
+                              : null,
+                          }))}
+                          currentUserId={currentUserId}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* =================== Pořadí skupin =================== */}
         <section id="skupiny" className="mt-16 scroll-mt-32">

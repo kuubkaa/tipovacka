@@ -24,6 +24,16 @@ const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   timeZone: "Europe/Prague",
 });
 
+// Pořadí + krátký štítek vyřazovacích kol (do hlavičky sloupce).
+const KNOCKOUT_MATCH_STAGES: Record<string, { idx: number; label: string }> = {
+  ROUND_OF_32: { idx: 1, label: "16f" },
+  ROUND_OF_16: { idx: 2, label: "8f" },
+  QUARTER_FINAL: { idx: 3, label: "ČF" },
+  SEMI_FINAL: { idx: 4, label: "SF" },
+  THIRD_PLACE: { idx: 5, label: "3. místo" },
+  FINAL: { idx: 6, label: "Finále" },
+};
+
 export default async function PrehledPage() {
   const session = await requireSession("/leaderboard/prehled");
   const currentUserId = session.user.id;
@@ -80,6 +90,7 @@ export default async function PrehledPage() {
   const [
     users,
     matches,
+    knockoutMatches,
     matchTips,
     teams,
     groupResults,
@@ -100,6 +111,14 @@ export default async function PrehledPage() {
         awayTeam: { select: { code: true, name: true, flagEmoji: true } },
       },
       orderBy: [{ group: "asc" }, { dateUtc: "asc" }],
+    }),
+    db.match.findMany({
+      where: { stage: { not: "GROUP" } },
+      include: {
+        homeTeam: { select: { code: true, name: true, flagEmoji: true } },
+        awayTeam: { select: { code: true, name: true, flagEmoji: true } },
+      },
+      orderBy: [{ dateUtc: "asc" }],
     }),
     db.tip.findMany({
       select: { userId: true, matchId: true, homeScore: true, awayScore: true },
@@ -207,6 +226,51 @@ export default async function PrehledPage() {
         return { text: `${t.home}:${t.away}`, points };
       },
     });
+  }
+
+  // --- Vyřazovací zápasy (odhalí se po výkopu prvního zápasu kola) ---
+  const koByStage = new Map<string, typeof knockoutMatches>();
+  for (const m of knockoutMatches) {
+    if (!m.homeTeam || !m.awayTeam) continue;
+    const list = koByStage.get(m.stage) ?? [];
+    list.push(m);
+    koByStage.set(m.stage, list);
+  }
+  const nowMs = now.getTime();
+  const revealedKoStages = Array.from(koByStage.entries())
+    .filter(
+      ([, ms]) => nowMs >= Math.min(...ms.map((m) => m.dateUtc.getTime()))
+    )
+    .sort(
+      ([a], [b]) =>
+        (KNOCKOUT_MATCH_STAGES[a]?.idx ?? 99) -
+        (KNOCKOUT_MATCH_STAGES[b]?.idx ?? 99)
+    );
+  for (const [stage, ms] of revealedKoStages) {
+    const label = KNOCKOUT_MATCH_STAGES[stage]?.label ?? stage;
+    for (const m of ms) {
+      const homeCode = m.homeTeam?.code ?? "?";
+      const awayCode = m.awayTeam?.code ?? "?";
+      const realScore =
+        m.homeScore !== null && m.awayScore !== null
+          ? `${m.homeScore}:${m.awayScore}`
+          : "—";
+      columns.push({
+        key: `m_${m.id}`,
+        short: `${homeCode}–${awayCode}`,
+        sub: label,
+        real: realScore,
+        cell: (userId) => {
+          const t = matchTipMap.get(matchTipKey(userId, m.id));
+          if (!t) return { text: "—", points: 0 };
+          const points =
+            m.homeScore !== null && m.awayScore !== null
+              ? scoreMatchTip(t.home, t.away, m.homeScore, m.awayScore)
+              : 0;
+          return { text: `${t.home}:${t.away}`, points };
+        },
+      });
+    }
   }
 
   // --- Pořadí skupin (4 pozice komprimované do 1 buňky) ---
