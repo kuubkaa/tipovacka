@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   GitFork,
   History,
+  Link2,
   ListChecks,
   Mail,
   Medal,
@@ -31,6 +32,7 @@ export default async function AdminPage() {
     scorerTypesWithResult,
     tipChangeLogCount,
     tipChangeUsersCount,
+    activeGrantCount,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -66,6 +68,7 @@ export default async function AdminPage() {
     db.tipChangeLog
       .groupBy({ by: ["userId"] })
       .then((rows) => rows.length),
+    db.tipEditGrant.count({ where: { expiresAt: { gt: new Date() } } }),
   ]);
 
   const remaining = totalMatches - playedMatches;
@@ -187,6 +190,22 @@ export default async function AdminPage() {
                   : tipChangeUsersCount < 5
                     ? "tipérů"
                     : "tipérů"}
+              </>
+            }
+          />
+
+          <AdminCard
+            href="/admin/dotipovani"
+            icon={<Link2 className="size-5 text-fuchsia-600" />}
+            title="Dotipování přes odkaz"
+            summary={
+              <>
+                {activeGrantCount}{" "}
+                {activeGrantCount === 1
+                  ? "aktivní odkaz"
+                  : activeGrantCount < 5
+                    ? "aktivní odkazy"
+                    : "aktivních odkazů"}
               </>
             }
           />

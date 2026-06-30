@@ -67,6 +67,7 @@ model User {
   groupRankings       GroupRankingTip[]
   knockoutAdvancers   KnockoutAdvancersTip[]
   tipChangeLogs       TipChangeLog[]
+  tipEditGrants       TipEditGrant[]
 }
 
 // =============================================================================
@@ -263,4 +264,33 @@ model TipChangeLog {
 
   @@index([userId, changedAt])
   @@index([entityType, entityKey])
+}
+
+// =============================================================================
+// Dotipování přes speciální odkaz
+// =============================================================================
+
+/// Admin vystaví jednorázové povolení, aby konkrétní uživatel mohl i po
+/// uzávěrce dotipovat vybrané vyřazovací zápasy. Odkaz `/dotipovani/<token>`
+/// nevyžaduje přihlášení — token sám autorizuje zápis (vědomý kompromis pro
+/// uzavřenou skupinu kamarádů, viz security_warnings.md). Platí do `expiresAt`
+/// a admin ho může kdykoli smazat (zrušit).
+model TipEditGrant {
+  id              String    @id @default(cuid())
+  /// Náhodný nehádatelný token v URL.
+  token           String    @unique
+  /// Komu je povolení vystaveno.
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Match.id zápasů, které uživatel smí přes odkaz vyplnit.
+  matchIds        String[]
+  /// Do kdy odkaz platí (UTC).
+  expiresAt       DateTime
+  /// Kdy uživatel odkaz naposledy použil (null = zatím nepoužil).
+  usedAt          DateTime?
+  /// Admin, který odkaz vystavil (User.id).
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
 }

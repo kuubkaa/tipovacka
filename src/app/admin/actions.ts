@@ -1,8 +1,11 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
+import { APP_URL } from "@/lib/app-url";
 import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -398,11 +401,6 @@ export type SendInvitationsResult =
   | { status: "unauth" }
   | { status: "forbidden" }
   | { status: "error"; message: string };
-
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ??
-  process.env.AUTH_URL ??
-  "https://tipovacka-phi.vercel.app";
 
 const deadlineDateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
@@ -863,4 +861,121 @@ async function deleteUser(userId: string): Promise<DeleteUserResult> {
   revalidatePath("/admin");
   revalidatePath("/admin/historie");
   return { status: "ok", deletedEmail: target.email };
+}
+
+// =============================================================================
+// Dotipování přes speciální odkaz (TipEditGrant)
+// =============================================================================
+
+export type CreateTipEditGrantResult =
+  | { status: "ok"; url: string }
+  | { status: "no-user" }
+  | { status: "no-matches" }
+  | { status: "bad-expiry" }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+/**
+ * Admin vystaví povolení, aby uživatel mohl i po uzávěrce dotipovat vybrané
+ * vyřazovací zápasy přes odkaz /dotipovani/<token>.
+ *
+ * FormData:
+ *   userId    = id uživatele, kterému povolení patří
+ *   matchIds  = (vícenásobně) Match.id povolených zápasů
+ *   expiresAt = pražský nástěnný čas z <input type="datetime-local">
+ */
+export async function createTipEditGrantAction(
+  _prev: CreateTipEditGrantResult | null,
+  formData: FormData
+): Promise<CreateTipEditGrantResult> {
+  try {
+    return await createTipEditGrant(formData);
+  } catch (err) {
+    console.error("[createTipEditGrantAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+async function createTipEditGrant(
+  formData: FormData
+): Promise<CreateTipEditGrantResult> {
+  const session = await requireAdminSession();
+  if (!session) return { status: "forbidden" };
+
+  const userId = (formData.get("userId") ?? "").toString().trim();
+  if (!userId) return { status: "no-user" };
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!user) return { status: "no-user" };
+
+  // Expirace: pražský nástěnný čas → UTC, musí být v budoucnu.
+  const expiresStr = (formData.get("expiresAt") ?? "").toString().trim();
+  const expiresAt = pragueLocalToUtc(expiresStr);
+  if (!expiresAt || isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now()) {
+    return { status: "bad-expiry" };
+  }
+
+  // Povolit jen vyřazovací zápasy s vyplněnými oběma týmy.
+  const requestedIds = formData
+    .getAll("matchIds")
+    .filter((v): v is string => typeof v === "string")
+    .map((v) => v.trim())
+    .filter((v) => v !== "");
+  const uniqueIds = Array.from(new Set(requestedIds));
+  if (uniqueIds.length === 0) return { status: "no-matches" };
+
+  const validMatches = await db.match.findMany({
+    where: {
+      id: { in: uniqueIds },
+      stage: { not: "GROUP" },
+      homeTeamId: { not: null },
+      awayTeamId: { not: null },
+    },
+    select: { id: true },
+  });
+  const matchIds = validMatches.map((m) => m.id);
+  if (matchIds.length === 0) return { status: "no-matches" };
+
+  const token = randomBytes(24).toString("hex");
+  await db.tipEditGrant.create({
+    data: {
+      token,
+      userId,
+      matchIds,
+      expiresAt,
+      createdByUserId: session.user.id,
+    },
+  });
+
+  revalidatePath("/admin/dotipovani");
+  return { status: "ok", url: `${APP_URL}/dotipovani/${token}` };
+}
+
+export type RevokeTipEditGrantResult =
+  | { status: "ok" }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+/** Admin zruší (smaže) vystavené povolení. FormData: grantId. */
+export async function revokeTipEditGrantAction(
+  _prev: RevokeTipEditGrantResult | null,
+  formData: FormData
+): Promise<RevokeTipEditGrantResult> {
+  try {
+    const session = await requireAdminSession();
+    if (!session) return { status: "forbidden" };
+    const grantId = (formData.get("grantId") ?? "").toString().trim();
+    if (grantId) {
+      await db.tipEditGrant.deleteMany({ where: { id: grantId } });
+    }
+    revalidatePath("/admin/dotipovani");
+    return { status: "ok" };
+  } catch (err) {
+    console.error("[revokeTipEditGrantAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
 }
