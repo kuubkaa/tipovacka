@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { GrantForm, type GrantStage, type GrantUser, type ExistingGrant } from "@/components/grant-form";
-import { APP_URL } from "@/lib/app-url";
+import { getAppOrigin } from "@/lib/app-url";
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
@@ -94,9 +94,10 @@ export default async function AdminDotipovaniPage() {
     }));
 
   const now = new Date();
+  const origin = await getAppOrigin();
   const existingGrants: ExistingGrant[] = grants.map((g) => ({
     id: g.id,
-    url: `${APP_URL}/dotipovani/${g.token}`,
+    url: `${origin}/dotipovani/${g.token}`,
     userLabel: g.user.name ?? g.user.email,
     matchCount: g.matchIds.length,
     expiresLabel: expiryFormatter.format(g.expiresAt),

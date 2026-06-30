@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
-import { APP_URL } from "@/lib/app-url";
+import { APP_URL, getAppOrigin } from "@/lib/app-url";
 import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -951,7 +951,8 @@ async function createTipEditGrant(
   });
 
   revalidatePath("/admin/dotipovani");
-  return { status: "ok", url: `${APP_URL}/dotipovani/${token}` };
+  const origin = await getAppOrigin();
+  return { status: "ok", url: `${origin}/dotipovani/${token}` };
 }
 
 export type RevokeTipEditGrantResult =
