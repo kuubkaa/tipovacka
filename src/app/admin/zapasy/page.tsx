@@ -61,41 +61,44 @@ export default async function AdminMatchResultsPage() {
   const isDone = (m: (typeof matches)[number]) =>
     m.homeScore !== null && m.awayScore !== null;
 
-  // Seskupí zápasy podle fáze (skupiny → finále) do sekcí. `playable` je už
-  // seřazené podle výkopu, takže uvnitř fáze zůstane chronologie.
-  const bucketByStage = (
-    list: (typeof matches)[number][],
-    prefix: string
-  ): SectionData[] => {
-    const byRank = new Map<
-      number,
-      { label: string; matches: (typeof matches)[number][] }
-    >();
-    for (const m of list) {
-      const rank = stageRank(m);
-      if (!byRank.has(rank)) {
-        byRank.set(rank, { label: stageLabel(m), matches: [] });
-      }
-      byRank.get(rank)!.matches.push(m);
-    }
-    return [...byRank.entries()]
-      .sort(([a], [b]) => a - b)
-      .map(([, v]) => ({
-        label: `${prefix}: ${v.label} (${v.matches.length})`,
-        matches: v.matches.map(toData),
-      }));
-  };
-
-  // Nezadané fáze nahoře (rozdělené po kolech), zadané pod nimi.
-  const pendingMatches = playable.filter((m) => !isDone(m));
-  const doneMatches = playable.filter(isDone);
-
   const hasKnockout = playable.some((m) => m.stage !== "GROUP");
 
-  const allSections: SectionData[] = [
-    ...bucketByStage(pendingMatches, "Zbývá zadat"),
-    ...bucketByStage(doneMatches, "Zadané"),
+  // Uvnitř sekce: nezadané nahoře (rychlé zadávání), pak zadané. `playable`
+  // je seřazené podle výkopu, takže chronologie zůstane v obou půlkách.
+  const pendingFirst = (list: (typeof matches)[number][]) => [
+    ...list.filter((m) => !isDone(m)),
+    ...list.filter(isDone),
   ];
+
+  const groupMatches = playable.filter((m) => m.stage === "GROUP");
+  const knockoutMatches = playable.filter((m) => m.stage !== "GROUP");
+
+  const allSections: SectionData[] = [];
+
+  // Skupiny — jedna sekce.
+  if (groupMatches.length > 0) {
+    const done = groupMatches.filter(isDone).length;
+    allSections.push({
+      label: `Skupiny (${done}/${groupMatches.length} zadáno)`,
+      matches: pendingFirst(groupMatches).map(toData),
+    });
+  }
+
+  // Play Off — sekce po kolech (šestnáctifinále → finále).
+  const koByRank = new Map<number, (typeof matches)[number][]>();
+  for (const m of knockoutMatches) {
+    const rank = stageRank(m);
+    const list = koByRank.get(rank) ?? [];
+    list.push(m);
+    koByRank.set(rank, list);
+  }
+  for (const [, list] of [...koByRank.entries()].sort(([a], [b]) => a - b)) {
+    const done = list.filter(isDone).length;
+    allSections.push({
+      label: `Play Off · ${stageLabel(list[0])} (${done}/${list.length} zadáno)`,
+      matches: pendingFirst(list).map(toData),
+    });
+  }
 
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">

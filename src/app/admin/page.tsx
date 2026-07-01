@@ -33,6 +33,8 @@ export default async function AdminPage() {
     tipChangeLogCount,
     tipChangeUsersCount,
     activeGrantCount,
+    knockoutPlayable,
+    knockoutPlayed,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -69,9 +71,26 @@ export default async function AdminPage() {
       .groupBy({ by: ["userId"] })
       .then((rows) => rows.length),
     db.tipEditGrant.count({ where: { expiresAt: { gt: new Date() } } }),
+    db.match.count({
+      where: {
+        stage: { not: "GROUP" },
+        homeTeamId: { not: null },
+        awayTeamId: { not: null },
+      },
+    }),
+    db.match.count({
+      where: {
+        stage: { not: "GROUP" },
+        homeTeamId: { not: null },
+        awayTeamId: { not: null },
+        homeScore: { not: null },
+        awayScore: { not: null },
+      },
+    }),
   ]);
 
   const remaining = totalMatches - playedMatches;
+  const knockoutRemaining = knockoutPlayable - knockoutPlayed;
   const TOTAL_KNOCKOUT = 16 + 8 + 4 + 2 + 1 + 1; // R32 + R16 + QF + SF + Bronz + F = 32
 
   return (
@@ -101,12 +120,29 @@ export default async function AdminPage() {
             title="Výsledky zápasů"
             summary={
               <>
-                {playedMatches} / {totalMatches} zápasů zadaných
-                {remaining > 0 && (
-                  <span className="ml-1 text-amber-700">
-                    ({remaining} zbývá)
-                  </span>
-                )}
+                <span className="block">
+                  Skupiny: {playedMatches} / {totalMatches}
+                  {remaining > 0 && (
+                    <span className="ml-1 text-amber-700">
+                      ({remaining} zbývá)
+                    </span>
+                  )}
+                </span>
+                <span className="block">
+                  Play Off:{" "}
+                  {knockoutPlayable > 0 ? (
+                    <>
+                      {knockoutPlayed} / {knockoutPlayable}
+                      {knockoutRemaining > 0 && (
+                        <span className="ml-1 text-amber-700">
+                          ({knockoutRemaining} zbývá)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-slate-500">zatím žádné</span>
+                  )}
+                </span>
               </>
             }
           />
