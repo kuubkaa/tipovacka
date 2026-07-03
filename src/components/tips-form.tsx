@@ -84,29 +84,32 @@ export function TipsForm({ sections }: { sections: SectionData[] }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {sections.map((s) => (
-        <section
-          key={s.label}
-          className="overflow-hidden rounded-xl border border-slate-200 bg-white"
-        >
-          <header className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
-            <h2 className="text-sm font-semibold tracking-wide text-slate-700">
-              {s.label}
-            </h2>
-          </header>
+      {/* Na PC rozlož sekce (skupiny / kola) do sloupců — míň scrollování. */}
+      <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {sections.map((s) => (
+          <section
+            key={s.label}
+            className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+          >
+            <header className="border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+              <h2 className="text-sm font-semibold tracking-wide text-slate-700">
+                {s.label}
+              </h2>
+            </header>
 
-          <ul className="divide-y divide-slate-100">
-            {s.matches.map((m) => (
-              <MatchRow
-                key={m.id}
-                match={m}
-                scores={scores}
-                onChange={update}
-              />
-            ))}
-          </ul>
-        </section>
-      ))}
+            <ul className="divide-y divide-slate-100">
+              {s.matches.map((m) => (
+                <MatchRow
+                  key={m.id}
+                  match={m}
+                  scores={scores}
+                  onChange={update}
+                />
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
 
       {anyEditable ? (
         <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">

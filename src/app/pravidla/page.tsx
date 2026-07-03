@@ -8,7 +8,7 @@ export default function PravidlaPage() {
       description="Jak se počítají body za jednotlivé tipy."
       active="pravidla"
     >
-      <div className="space-y-6">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card title="Tipy zápasů">
           <p className="text-sm text-slate-600">
             Za každý zápas získá tipující body podle nejvyššího splněného

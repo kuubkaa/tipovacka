@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { formatCzk, tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
 import { cn } from "@/lib/utils";
+import { PAGE_WIDTH } from "@/lib/layout";
 import { SCORING, computeLeaderboard } from "@/lib/scoring";
 
 // Vzhled medailových míst (1.–3.) — pozadí řádku, odznak pořadí, emoji
@@ -64,7 +65,7 @@ export default async function LeaderboardPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900 print:bg-white">
       <SiteHeader active="leaderboard">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-end gap-3 px-4 py-2 sm:px-6">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-end gap-3 px-4 py-2 sm:px-6`}>
           <Link
             href="/leaderboard/prehled"
             className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
@@ -75,7 +76,7 @@ export default async function LeaderboardPage() {
         </div>
       </SiteHeader>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8 print:max-w-full print:px-0 print:py-0">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8 print:max-w-full print:px-0 print:py-0`}>
         <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl print:hidden">
           Pořadí tipérů
         </h1>
@@ -133,19 +134,19 @@ export default async function LeaderboardPage() {
                     Pořadí
                   </th>
                   <th className="px-3 py-2">Tipér</th>
-                  <th className="hidden px-3 py-2 text-right print:table-cell">
+                  <th className="hidden px-3 py-2 text-right lg:table-cell print:table-cell">
                     Zápasy
                   </th>
-                  <th className="hidden px-3 py-2 text-right print:table-cell">
+                  <th className="hidden px-3 py-2 text-right lg:table-cell print:table-cell">
                     Skupiny
                   </th>
-                  <th className="hidden px-3 py-2 text-right print:table-cell">
+                  <th className="hidden px-3 py-2 text-right lg:table-cell print:table-cell">
                     Střelci
                   </th>
-                  <th className="hidden px-3 py-2 text-right print:table-cell">
+                  <th className="hidden px-3 py-2 text-right lg:table-cell print:table-cell">
                     Postupy
                   </th>
-                  <th className="hidden px-3 py-2 text-right print:table-cell">
+                  <th className="hidden px-3 py-2 text-right lg:table-cell print:table-cell">
                     Speciál
                   </th>
                   <th className="px-3 py-2 text-right sm:w-20 print:w-16">
@@ -242,26 +243,26 @@ function Row({
           )}
         </div>
         {/* Breakdown subtitle — jen pro web */}
-        <div className="mt-0.5 text-xs text-slate-500 print:hidden">
+        <div className="mt-0.5 text-xs text-slate-500 lg:hidden print:hidden">
           {row.breakdown.matches}z · {row.breakdown.groupRanking}sk ·{" "}
           {row.breakdown.groupScorers}kr · {row.breakdown.advancers}p ·{" "}
           {row.breakdown.special}sp
         </div>
       </td>
       {/* Breakdown sloupce — jen pro tisk */}
-      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 print:table-cell">
+      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 lg:table-cell print:table-cell">
         {row.breakdown.matches}
       </td>
-      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 print:table-cell">
+      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 lg:table-cell print:table-cell">
         {row.breakdown.groupRanking}
       </td>
-      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 print:table-cell">
+      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 lg:table-cell print:table-cell">
         {row.breakdown.groupScorers}
       </td>
-      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 print:table-cell">
+      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 lg:table-cell print:table-cell">
         {row.breakdown.advancers}
       </td>
-      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 print:table-cell">
+      <td className="hidden px-3 py-3 text-right tabular-nums text-slate-700 lg:table-cell print:table-cell">
         {row.breakdown.special}
       </td>
       <td className="px-3 py-3 text-right text-lg font-bold tabular-nums text-slate-900">

@@ -7,6 +7,7 @@ import {
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
+import { PAGE_WIDTH } from "@/lib/layout";
 
 const KNOCKOUT_ORDER: Record<string, { idx: number; label: string }> = {
   ROUND_OF_32: { idx: 1, label: "Šestnáctifinále" },
@@ -104,7 +105,7 @@ export default async function AdminMatchResultsPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4`}>
           <div className="min-w-0">
             <Link
               href="/admin"
@@ -125,7 +126,7 @@ export default async function AdminMatchResultsPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
           <p>
             Zadej skutečné skóre po skončení zápasu. Vyplň obě políčka, jinak

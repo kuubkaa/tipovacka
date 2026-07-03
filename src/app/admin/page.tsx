@@ -15,6 +15,7 @@ import {
 
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
+import { PAGE_WIDTH } from "@/lib/layout";
 import { tournament } from "@/config/tournament";
 
 export default async function AdminPage() {
@@ -96,7 +97,7 @@ export default async function AdminPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4`}>
           <div>
             <Link
               href="/"
@@ -112,8 +113,8 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-        <div className="grid gap-4 sm:grid-cols-2">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <AdminCard
             href="/admin/zapasy"
             icon={<ListChecks className="size-5 text-emerald-600" />}

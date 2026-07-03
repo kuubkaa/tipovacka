@@ -6,6 +6,7 @@ import { DeleteUserButton } from "@/components/delete-user-button";
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
+import { PAGE_WIDTH } from "@/lib/layout";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
@@ -173,7 +174,7 @@ export default async function AdminHistoryDetailPage({
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4`}>
           <div className="min-w-0">
             <Link
               href="/admin/historie"
@@ -207,7 +208,7 @@ export default async function AdminHistoryDetailPage({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         {logs.length === 0 ? (
           <p className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
             Tento uživatel zatím neuložil žádný tip.
@@ -219,7 +220,7 @@ export default async function AdminHistoryDetailPage({
               {logs.length === 1 ? "změna" : logs.length < 5 ? "změny" : "změn"}{" "}
               od nejnovější po nejstarší.
             </p>
-            <ol className="space-y-2">
+            <ol className="space-y-2 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0">
               {logs.map((log) => {
                 const isCreate = log.oldValue === null;
                 const isDelete = log.newValue === null;

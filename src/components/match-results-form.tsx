@@ -93,7 +93,8 @@ export function MatchResultsForm({ sections }: { sections: SectionData[] }) {
               {s.label}
             </h2>
           </header>
-          <ul className="divide-y divide-slate-100">
+          {/* Na PC zápasy do mřížky (vlasové linky přes gap-px) — míň scrollu. */}
+          <ul className="grid gap-px bg-slate-100 sm:grid-cols-2 xl:grid-cols-3">
             {s.matches.map((m) => (
               <MatchRow
                 key={m.id}
@@ -163,7 +164,7 @@ function MatchRow({
   const homeKey = `home_${match.id}`;
   const awayKey = `away_${match.id}`;
   return (
-    <li className="px-3 py-3 sm:px-4">
+    <li className="bg-white px-3 py-3 sm:px-4">
       <p className="mb-2 text-[11px] uppercase tracking-wide text-slate-400">
         {matchDateFormatter.format(date)}
         {match.context && (

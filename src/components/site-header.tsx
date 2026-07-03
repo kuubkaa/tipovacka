@@ -3,6 +3,7 @@ import Link from "next/link";
 import { auth, signOut } from "@/auth";
 import { SiteNav } from "@/components/site-nav";
 import { tournament } from "@/config/tournament";
+import { PAGE_WIDTH } from "@/lib/layout";
 
 /** Která stránka je aktivní — kvůli zvýraznění + kontextovému odkazu na tipy. */
 export type ActivePage =
@@ -32,7 +33,7 @@ export async function SiteHeader({
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur print:hidden">
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+      <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-between gap-3 px-4 py-2.5 sm:px-6`}>
         <Link
           href="/"
           className="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800"

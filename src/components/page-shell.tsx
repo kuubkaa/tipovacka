@@ -1,4 +1,5 @@
 import { SiteHeader, type ActivePage } from "@/components/site-header";
+import { PAGE_WIDTH } from "@/lib/layout";
 
 export function PageShell({
   title,
@@ -15,7 +16,7 @@ export function PageShell({
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <SiteHeader active={active} />
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-8 sm:px-6 sm:py-10`}>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
         {description && (
           <p className="mt-2 text-base text-slate-600">{description}</p>

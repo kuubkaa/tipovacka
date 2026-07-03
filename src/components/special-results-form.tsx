@@ -62,6 +62,8 @@ export function SpecialResultsForm({ data }: { data: SpecialResultsData }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Vítěz + král střelců — na PC vedle sebe */}
+      <div className="grid gap-6 lg:grid-cols-2">
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <header className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
           <Trophy className="size-4 text-amber-600" />
@@ -113,6 +115,7 @@ export function SpecialResultsForm({ data }: { data: SpecialResultsData }) {
           />
         </div>
       </section>
+      </div>
 
       <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">

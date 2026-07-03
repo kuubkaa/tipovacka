@@ -11,6 +11,7 @@ import { TipsForm, type SectionData } from "@/components/tips-form";
 import { SiteHeader } from "@/components/site-header";
 import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+import { PAGE_WIDTH } from "@/lib/layout";
 import { db } from "@/lib/db";
 
 const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
@@ -191,7 +192,7 @@ export default async function FormularPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <SiteHeader active="tipy-vlastni">
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6`}>
           <a
             href="#poradi-skupin"
             className="text-slate-600 hover:text-slate-900"
@@ -221,7 +222,7 @@ export default async function FormularPage() {
         </div>
       </SiteHeader>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">
           {globalDeadlinePassed ? "Tvoje tipy" : "Vyplnit tipy"}
         </h1>

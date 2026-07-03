@@ -102,6 +102,8 @@ export function ScorerAliasesForm({ data }: { data: ScorerAliasesData }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Na PC sekce střelců do dvou sloupců — míň scrollu. */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
       {data.sections.map((s) => {
         const selected = selection[s.type] ?? new Set<string>();
         const manualVariants = s.variants.filter((v) => !v.isAutoMatch);
@@ -183,6 +185,7 @@ export function ScorerAliasesForm({ data }: { data: ScorerAliasesData }) {
           </section>
         );
       })}
+      </div>
 
       <div className="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex items-center justify-between gap-4">

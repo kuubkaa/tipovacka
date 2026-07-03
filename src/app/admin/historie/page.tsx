@@ -5,6 +5,7 @@ import { DeleteUserButton } from "@/components/delete-user-button";
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
+import { PAGE_WIDTH } from "@/lib/layout";
 
 const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
@@ -49,7 +50,7 @@ export default async function AdminHistoriePage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4`}>
           <div className="min-w-0">
             <Link
               href="/admin"
@@ -70,7 +71,7 @@ export default async function AdminHistoriePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         <p className="mb-4 text-sm text-slate-600">
           Append-only log všech změn tipů. Použij k dohledání, co měl uživatel
           uložené v určitý moment (např. spor o tip před deadlinem).

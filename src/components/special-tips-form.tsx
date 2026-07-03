@@ -187,7 +187,8 @@ export function SpecialTipsForm({
         );
       })}
 
-      {/* Vítěz turnaje */}
+      {/* Vítěz turnaje + král střelců — na PC vedle sebe */}
+      <div className="grid gap-6 lg:grid-cols-2">
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         <header className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
           <Trophy className="size-4 text-amber-600" />
@@ -246,6 +247,7 @@ export function SpecialTipsForm({
           />
         </div>
       </section>
+      </div>
 
       {disabled ? (
         <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">

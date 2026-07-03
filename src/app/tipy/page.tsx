@@ -7,6 +7,7 @@ import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+import { PAGE_WIDTH } from "@/lib/layout";
 import {
   SCORING,
   scoreAdvancers,
@@ -67,7 +68,7 @@ export default async function TipyPage() {
     return (
       <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
         <SiteHeader active="tipy-vsech" />
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
+        <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-12 sm:px-6`}>
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
             <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
               <Lock className="size-5" />
@@ -221,7 +222,7 @@ export default async function TipyPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <SiteHeader active="tipy-vsech">
-        <div className="mx-auto flex w-full max-w-3xl gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6">
+        <div className={`mx-auto flex w-full ${PAGE_WIDTH} gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6`}>
           <a href="#zapasy" className="text-slate-600 hover:text-slate-900">
             Zápasy
           </a>
@@ -245,7 +246,7 @@ export default async function TipyPage() {
         </div>
       </SiteHeader>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">
           Tipy všech
         </h1>
@@ -258,7 +259,7 @@ export default async function TipyPage() {
                 <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-wider text-slate-500">
                   {dayLabelFormatter.format(new Date(ms[0].dateUtc))}
                 </h3>
-                <div className="space-y-3">
+                <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {ms.map((m) => {
                     const mts = tipsByMatch.get(m.id) ?? [];
                     const hasResult =
@@ -309,7 +310,7 @@ export default async function TipyPage() {
                   <h3 className="mb-3 px-1 text-sm font-semibold uppercase tracking-wider text-slate-500">
                     {round.label}
                   </h3>
-                  <div className="space-y-3">
+                  <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {round.matches.map((m) => {
                       const mts = tipsByMatch.get(m.id) ?? [];
                       const hasResult =
@@ -354,7 +355,7 @@ export default async function TipyPage() {
           <h2 className="mb-3 text-lg font-bold tracking-tight">
             Pořadí skupin
           </h2>
-          <div className="space-y-6">
+          <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {groupLetters.map((g) => {
               const realRanking = groupRankingResultByGroup.get(g) ?? null;
               const realScorer = tournamentResultByType.get(
@@ -395,7 +396,7 @@ export default async function TipyPage() {
         {/* =================== Postupující =================== */}
         <section id="postupy" className="mt-16 scroll-mt-32">
           <h2 className="mb-3 text-lg font-bold tracking-tight">Postupy</h2>
-          <div className="space-y-6">
+          <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {KNOCKOUT_ADVANCERS_ROUNDS.map((round) => {
               const realCodes = knockoutResultByStage.get(round.stage) ?? null;
               const tips = knockoutTipsByStage.get(round.stage) ?? [];
@@ -426,7 +427,7 @@ export default async function TipyPage() {
           <h2 className="mb-3 text-lg font-bold tracking-tight">
             Speciální tipy
           </h2>
-          <div className="space-y-6">
+          <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <SpecialCard
               label="Vítěz turnaje"
               realValue={tournamentResultByType.get("TOURNAMENT_WINNER") ?? null}
