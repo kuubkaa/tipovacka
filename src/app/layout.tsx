@@ -20,6 +20,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: tournament.name,
   description: tournament.subtitle,
+  // Vypne iOS/Safari automatické „data detectors" (telefon, datum, adresa…),
+  // které umí text auto-obarvit / udělat z něj odkaz.
+  formatDetection: { telephone: false, date: false, address: false, email: false },
 };
 
 // Layout čte přihlášení (cookie) kvůli upozornění na nezaplacené startovné,

@@ -647,8 +647,12 @@ function TeamChipList({
             key={`${c}-${i}`}
             className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-900"
           >
-            <span>{t?.flagEmoji ?? ""}</span>
-            <span>{t?.name ?? c}</span>
+            <span aria-hidden>{t?.flagEmoji ?? ""}</span>
+            {/* Explicitní -webkit-text-fill-color: na iOS WebKitu jinak text
+                „přebíral" barvu z vlajkového emoji a názvy byly barevné. */}
+            <span style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}>
+              {t?.name ?? c}
+            </span>
           </span>
         );
       })}
