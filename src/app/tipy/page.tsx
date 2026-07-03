@@ -645,7 +645,7 @@ function TeamChipList({
         return (
           <span
             key={`${c}-${i}`}
-            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700"
+            className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-900"
           >
             <span>{t?.flagEmoji ?? ""}</span>
             <span>{t?.name ?? c}</span>
