@@ -3,8 +3,12 @@ import type { Session } from "next-auth";
 import type { Adapter, AdapterSession } from "next-auth/adapters";
 import Nodemailer from "next-auth/providers/nodemailer";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { cookies } from "next/headers";
 
 import { db } from "@/lib/db";
+
+// Jméno cookie, kterou nese tajný klíč pro auto-login na Vercel preview.
+export const PREVIEW_AUTOLOGIN_COOKIE = "preview_autologin";
 
 // Prisma kód pro „záznam k operaci nenalezen".
 function isRecordNotFound(err: unknown): boolean {
@@ -100,33 +104,33 @@ export const {
   },
 });
 
-// ── Dev auto-login ────────────────────────────────────────────────────────
-// Aby se při lokálním vývoji nemuselo pořád dokola přihlašovat přes magic
-// link, lze ve `.env.local` nastavit `DEV_AUTOLOGIN_EMAIL=<email>`. Pak
-// `auth()` v dev módu vrátí session toho uživatele i bez cookie.
+// ── Auto-login pro pohodlný vývoj ──────────────────────────────────────────
+// Dva režimy, oba jen MIMO produkci:
 //
-// BEZPEČNOST: aktivní jen když `NODE_ENV === "development"`. V produkci
-// (Vercel) se `nextAuth()` vrací beze změny, i kdyby env var nějak unikla.
+//  1) Lokální `npm run dev` (NODE_ENV=development): stačí ve `.env.local`
+//     nastavit `DEV_AUTOLOGIN_EMAIL=<email>`. Bez cookie, jen lokálně.
+//
+//  2) Vercel preview (VERCEL_ENV=preview): potřebuje `PREVIEW_AUTOLOGIN_EMAIL`
+//     + tajný klíč `PREVIEW_AUTOLOGIN_KEY`. Aktivuje se AŽ když prohlížeč nese
+//     cookie `preview_autologin` shodnou s klíčem — tu nastaví route
+//     `/dev-login?key=<klíč>` (navštívíš ji jednou). Cizí návštěvník preview
+//     URL cookie nemá → vidí normální login.
+//
+// BEZPEČNOST: v produkci (VERCEL_ENV=production) se ani jeden režim nikdy
+// neaktivuje, i kdyby některá env var nějak unikla.
+const isPreview = process.env.VERCEL_ENV === "preview";
+
 const devAutoLoginEmail = isDev
   ? process.env.DEV_AUTOLOGIN_EMAIL?.trim() || undefined
   : undefined;
 
-export const auth = async (): Promise<Session | null> => {
-  const real = await nextAuth();
-  if (real?.user || !devAutoLoginEmail) return real;
-
-  const user = await db.user.findUnique({
-    where: { email: devAutoLoginEmail },
-  });
-  if (!user) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[DEV auto-login] Uživatel ${devAutoLoginEmail} není v DB — ` +
-        `přihlas se jednou přes magic link, pak už pojede automaticky.`
-    );
-    return real;
-  }
-
+function sessionForUser(user: {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  isAdmin: boolean;
+}): Session {
   return {
     user: {
       id: user.id,
@@ -137,4 +141,36 @@ export const auth = async (): Promise<Session | null> => {
     },
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   };
+}
+
+// Vrátí email pro preview auto-login, jen pokud jsme na preview a cookie nese
+// správný tajný klíč. Jinak undefined.
+async function previewAutoLoginEmail(): Promise<string | undefined> {
+  if (!isPreview) return undefined;
+  const email = process.env.PREVIEW_AUTOLOGIN_EMAIL?.trim();
+  const key = process.env.PREVIEW_AUTOLOGIN_KEY?.trim();
+  if (!email || !key) return undefined;
+
+  const provided = (await cookies()).get(PREVIEW_AUTOLOGIN_COOKIE)?.value;
+  return provided && provided === key ? email : undefined;
+}
+
+export const auth = async (): Promise<Session | null> => {
+  const real = await nextAuth();
+  if (real?.user) return real;
+
+  const email = devAutoLoginEmail ?? (await previewAutoLoginEmail());
+  if (!email) return real;
+
+  const user = await db.user.findUnique({ where: { email } });
+  if (!user) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[auto-login] Uživatel ${email} není v DB — ` +
+        `přihlas se jednou přes magic link, pak už pojede automaticky.`
+    );
+    return real;
+  }
+
+  return sessionForUser(user);
 };

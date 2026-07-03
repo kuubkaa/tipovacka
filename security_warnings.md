@@ -21,3 +21,27 @@ Seznam vědomých bezpečnostních kompromisů a rizik. Aktualizuj při každé 
 - **Pokud by skupina vyrostla / zvýšila se citlivost:** přepnout odkaz na variantu
   vyžadující přihlášení (magic link jako daný uživatel) — návrh už to počítá jako
   alternativu.
+
+## Auto-login na Vercel preview (`/dev-login`, `PREVIEW_AUTOLOGIN_*`)
+
+- **Riziko:** Preview deployment branche `dev` čte stejné env proměnné jako
+  produkce, tedy se připojuje ke **stejné produkční databázi**. Auto-login jako
+  admin (`jakubmilotinsky@gmail.com`) na veřejné preview URL by tak znamenal
+  plný admin přístup k ostrým datům pro kohokoli, kdo tu URL najde.
+- **Proč to tak je:** Pohodlí při vývoji — nechceme se na preview pořád
+  přihlašovat magic linkem.
+- **Zmírnění:**
+  - Auto-login se aktivuje JEN na Vercel preview (`VERCEL_ENV === "preview"`),
+    nikdy v produkci ani lokálně (tam běží samostatný `DEV_AUTOLOGIN_EMAIL`).
+  - Spustí se AŽ když prohlížeč nese cookie `preview_autologin` shodnou s tajným
+    klíčem `PREVIEW_AUTOLOGIN_KEY` (náhodný, 48 hex znaků). Cizí návštěvník
+    preview URL cookie nemá → vidí normální login.
+  - Cookie nastaví jen route `/dev-login?key=<klíč>`, která sama funguje pouze na
+    preview a jinde vrací 404. Cookie je `httpOnly`, `secure`, `sameSite=lax`.
+  - Klíč i email jsou env proměnné nastavené **jen v Preview scope** na Vercelu
+    (ne v Production).
+- **Zbytkové riziko:** Kdo získá tajný klíč, získá admin na produkční data přes
+  preview. Klíč drž v tajnosti; při úniku ho přegeneruj (změna env var na
+  Vercelu okamžitě zneplatní staré cookie).
+- **Čistší varianta do budoucna:** oddělená testovací DB pro preview, pak by
+  auto-login nebyl rizikový vůbec.
