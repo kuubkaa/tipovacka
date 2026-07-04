@@ -26,14 +26,14 @@ export interface DeadlineUnit {
   /** Aktuálně platná (efektivní) uzávěrka lidsky. */
   effectiveText: string;
   hasOverride: boolean;
+  /** Jednotlivé zápasy pod touto jednotkou (schované pod rozklikem). */
+  matches?: DeadlineUnit[];
 }
 
 export interface DeadlineSection {
   title: string;
   /** Jednotky na úrovni kola / kategorie (vždy viditelné). */
   units: DeadlineUnit[];
-  /** Jednotlivé zápasy (schované pod rozklikem). */
-  matches: DeadlineUnit[];
 }
 
 const inputClass =
@@ -49,26 +49,27 @@ export function DeadlinesForm({ sections }: { sections: DeadlineSection[] }) {
           </h2>
           <div className="space-y-3">
             {section.units.map((u) => (
-              <DeadlineRow key={u.scope} unit={u} />
+              <div key={u.scope} className="space-y-3">
+                <DeadlineRow unit={u} />
+                {u.matches && u.matches.length > 0 && (
+                  <details className="group overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                      <span>
+                        Jednotlivé zápasy{" "}
+                        <span className="text-slate-400">({u.matches.length})</span>
+                      </span>
+                      <ChevronDown className="size-4 text-slate-400 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="space-y-3 border-t border-slate-100 p-3">
+                      {u.matches.map((m) => (
+                        <DeadlineRow key={m.scope} unit={m} compact />
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
             ))}
           </div>
-
-          {section.matches.length > 0 && (
-            <details className="group mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                <span>
-                  Jednotlivé zápasy{" "}
-                  <span className="text-slate-400">({section.matches.length})</span>
-                </span>
-                <ChevronDown className="size-4 text-slate-400 transition-transform group-open:rotate-180" />
-              </summary>
-              <div className="space-y-3 border-t border-slate-100 p-3">
-                {section.matches.map((u) => (
-                  <DeadlineRow key={u.scope} unit={u} compact />
-                ))}
-              </div>
-            </details>
-          )}
         </section>
       ))}
     </div>

@@ -89,16 +89,26 @@ export default async function AdminUzaverkyPage() {
 
   // --- Skupinová fáze ---
   const groupMatches = matches.filter((m) => m.stage === "GROUP");
+  const groupMatchesUnit = unit(
+    stageScope("GROUP"),
+    "Skupinové zápasy",
+    ctx.stageAutoDeadline("GROUP"),
+    ctx.stageDeadline("GROUP"),
+    `${groupMatches.length} zápasů`
+  );
+  groupMatchesUnit.matches = groupMatches.map((m) =>
+    unit(
+      matchScope(m.id),
+      `${m.group ? `Sk. ${m.group} · ` : ""}${matchLabel(m)}`,
+      ctx.stageDeadline("GROUP"),
+      ctx.matchDeadline(m),
+      shortFormatter.format(m.dateUtc)
+    )
+  );
   const groupSection: DeadlineSection = {
     title: "Skupinová fáze",
     units: [
-      unit(
-        stageScope("GROUP"),
-        "Skupinové zápasy",
-        ctx.stageAutoDeadline("GROUP"),
-        ctx.stageDeadline("GROUP"),
-        `${groupMatches.length} zápasů`
-      ),
+      groupMatchesUnit,
       unit(
         SCOPE_RANKINGS,
         "Pořadí skupin",
@@ -113,15 +123,6 @@ export default async function AdminUzaverkyPage() {
         "Postupující, vítěz turnaje, král střelců"
       ),
     ],
-    matches: groupMatches.map((m) =>
-      unit(
-        matchScope(m.id),
-        `${m.group ? `Sk. ${m.group} · ` : ""}${matchLabel(m)}`,
-        ctx.stageDeadline("GROUP"),
-        ctx.matchDeadline(m),
-        shortFormatter.format(m.dateUtc)
-      )
-    ),
   };
 
   // --- Vyřazovací kola (jen ta, co mají zápasy) ---
@@ -132,27 +133,23 @@ export default async function AdminUzaverkyPage() {
   const koSections: DeadlineSection[] = koStages.map((stage) => {
     const stageMatches = matches.filter((m) => m.stage === stage);
     const label = KNOCKOUT_ORDER[stage]?.label ?? stage;
-    return {
-      title: label,
-      units: [
-        unit(
-          stageScope(stage),
-          `${label} — celé kolo`,
-          ctx.stageAutoDeadline(stage),
-          ctx.stageDeadline(stage),
-          `${stageMatches.length} zápasů`
-        ),
-      ],
-      matches: stageMatches.map((m) =>
-        unit(
-          matchScope(m.id),
-          matchLabel(m),
-          ctx.stageDeadline(stage),
-          ctx.matchDeadline(m),
-          shortFormatter.format(m.dateUtc)
-        )
-      ),
-    };
+    const roundUnit = unit(
+      stageScope(stage),
+      `${label} — celé kolo`,
+      ctx.stageAutoDeadline(stage),
+      ctx.stageDeadline(stage),
+      `${stageMatches.length} zápasů`
+    );
+    roundUnit.matches = stageMatches.map((m) =>
+      unit(
+        matchScope(m.id),
+        matchLabel(m),
+        ctx.stageDeadline(stage),
+        ctx.matchDeadline(m),
+        shortFormatter.format(m.dateUtc)
+      )
+    );
+    return { title: label, units: [roundUnit] };
   });
 
   const sections = [groupSection, ...koSections];
