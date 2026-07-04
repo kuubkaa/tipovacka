@@ -4,7 +4,8 @@ import "./globals.css";
 import { NavigationProgress } from "@/components/navigation-progress";
 import { PaymentDueDialog } from "@/components/payment-due-dialog";
 import { auth } from "@/auth";
-import { tournament, isDeadlinePassed } from "@/config/tournament";
+import { tournament } from "@/config/tournament";
+import { isGroupPhaseClosed } from "@/lib/deadlines";
 import { db } from "@/lib/db";
 
 const geistSans = Geist({
@@ -46,7 +47,7 @@ export default async function RootLayout({
 }>) {
   // Po deadlinu připomeň nezaplaceným tipérům platbu startovného.
   let showPaymentDue = false;
-  if (isDeadlinePassed()) {
+  if (await isGroupPhaseClosed()) {
     const session = await auth();
     if (session?.user?.id) {
       const u = await db.user.findUnique({

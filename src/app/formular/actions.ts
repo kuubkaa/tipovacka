@@ -1,8 +1,12 @@
 "use server";
 
 import { auth } from "@/auth";
-import { isDeadlinePassed } from "@/config/tournament";
 import { db } from "@/lib/db";
+import {
+  isRankingsClosed,
+  isSpecialsClosed,
+  loadDeadlineContext,
+} from "@/lib/deadlines";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { recordTipChange } from "@/lib/tip-audit";
 
@@ -97,17 +101,10 @@ async function saveTips(formData: FormData): Promise<SaveTipsResult> {
   });
   const stageByMatch = new Map(updatedMatches.map((m) => [m.id, m.stage]));
 
-  // Uzávěrka každé fáze = výkop jejího prvního zápasu. Skupina se uzavře
-  // výkopem úvodního zápasu turnaje, každé vyřazovací kolo výkopem svého
-  // prvního zápasu (pavouk se tipuje po skupinách, kolo po kole).
-  const stageMins = await db.match.groupBy({
-    by: ["stage"],
-    _min: { dateUtc: true },
-  });
-  const firstKickoffByStage = new Map<string, Date>();
-  for (const s of stageMins) {
-    if (s._min.dateUtc) firstKickoffByStage.set(s.stage, s._min.dateUtc);
-  }
+  // Uzávěrka každé fáze = výkop jejího prvního zápasu, POKUD ji admin ručně
+  // nepřebil vlastním termínem (DeadlineOverride). Priorita: override zápasu >
+  // override kola > automatika (výkop). Vše centrálně v loadDeadlineContext.
+  const deadlines = await loadDeadlineContext();
 
   const existingTips = await db.tip.findMany({
     where: { userId, matchId: { in: matchIds } },
@@ -121,9 +118,8 @@ async function saveTips(formData: FormData): Promise<SaveTipsResult> {
     const stage = stageByMatch.get(u.matchId);
     if (!stage) continue; // Neznámý zápas
 
-    // Uzávěrka dané fáze = výkop jejího prvního zápasu.
-    const lockAt = firstKickoffByStage.get(stage);
-    if (lockAt && now >= lockAt) {
+    // Uzávěrka zápasu = ruční override zápasu ?? override kola ?? výkop.
+    if (deadlines.matchLocked({ id: u.matchId, stage }, now)) {
       lockedSkipped++;
       continue;
     }
@@ -210,7 +206,7 @@ async function saveGroupRankings(
   if (!session?.user?.id) {
     return { status: "unauth" };
   }
-  if (isDeadlinePassed()) {
+  if (await isRankingsClosed()) {
     return { status: "deadline" };
   }
 
@@ -381,7 +377,7 @@ async function saveSpecialTips(
 ): Promise<SaveSpecialTipsResult> {
   const session = await auth();
   if (!session?.user?.id) return { status: "unauth" };
-  if (isDeadlinePassed()) return { status: "deadline" };
+  if (await isSpecialsClosed()) return { status: "deadline" };
 
   const userId = session.user.id;
 

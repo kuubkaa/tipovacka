@@ -9,8 +9,8 @@ import {
 } from "@/components/special-tips-form";
 import { TipsForm, type SectionData } from "@/components/tips-form";
 import { SiteHeader } from "@/components/site-header";
-import { isDeadlinePassed, tournament } from "@/config/tournament";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
+import { loadDeadlineContext } from "@/lib/deadlines";
 import { PAGE_WIDTH } from "@/lib/layout";
 import { db } from "@/lib/db";
 
@@ -76,17 +76,14 @@ export default async function FormularPage() {
 
   const tipsByMatch = new Map(tips.map((t) => [t.matchId, t]));
   const now = new Date();
-  const nowMs = now.getTime();
-  const globalDeadlinePassed = isDeadlinePassed(now);
 
-  // Uzávěrka každé fáze = výkop jejího prvního zápasu (skupina = úvodní
-  // zápas turnaje, každé vyřazovací kolo = jeho první zápas).
-  const firstKickoffByStage = new Map<string, number>();
-  for (const m of matches) {
-    const t = m.dateUtc.getTime();
-    const prev = firstKickoffByStage.get(m.stage);
-    if (prev === undefined || t < prev) firstKickoffByStage.set(m.stage, t);
-  }
+  // Uzávěrky (automatika = výkop prvního zápasu fáze, případně ruční přebití
+  // adminem v /admin/uzaverky). Priorita: override zápasu > override kola > výkop.
+  const deadlines = await loadDeadlineContext();
+  const groupPhaseClosed = deadlines.groupPhaseClosed(now);
+  const rankingsClosed = deadlines.rankingsClosed(now);
+  const specialsClosed = deadlines.specialsClosed(now);
+  const groupDeadline = deadlines.stageDeadline("GROUP");
 
   // --- Skupinové zápasy → sekce „Skupina A..L" ---
   const groupMatchSections = new Map<string, typeof matches>();
@@ -109,8 +106,8 @@ export default async function FormularPage() {
         home: m.homeTeam!,
         away: m.awayTeam!,
         existingTip: tipsByMatch.get(m.id) ?? null,
-        // Společný zámek — výkop prvního zápasu uzamkne všechny tipy.
-        locked: globalDeadlinePassed,
+        // Zámek zápasu = ruční override zápasu ?? override kola ?? výkop.
+        locked: deadlines.matchLocked(m, now),
       })),
     }));
 
@@ -138,8 +135,8 @@ export default async function FormularPage() {
         home: m.homeTeam!,
         away: m.awayTeam!,
         existingTip: tipsByMatch.get(m.id) ?? null,
-        // Zámek kola = výkop prvního zápasu daného kola.
-        locked: nowMs >= (firstKickoffByStage.get(m.stage) ?? Infinity),
+        // Zámek zápasu = ruční override zápasu ?? override kola ?? výkop kola.
+        locked: deadlines.matchLocked(m, now),
       })),
     }));
 
@@ -224,29 +221,27 @@ export default async function FormularPage() {
 
       <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         <h1 className="mb-4 text-xl font-bold tracking-tight sm:text-2xl">
-          {globalDeadlinePassed ? "Tvoje tipy" : "Vyplnit tipy"}
+          {groupPhaseClosed ? "Tvoje tipy" : "Vyplnit tipy"}
         </h1>
         <div
           className={`mb-6 rounded-lg border p-4 text-sm ${
-            globalDeadlinePassed
+            groupPhaseClosed
               ? "border-rose-200 bg-rose-50 text-rose-800"
               : "border-amber-200 bg-amber-50 text-amber-900"
           }`}
         >
-          {globalDeadlinePassed ? (
+          {groupPhaseClosed ? (
             <p>
               <strong>Skupinová část je uzamčená</strong> (
-              {dateFormatter.format(tournament.deadline)} — výkop úvodního
-              zápasu): skupinové zápasy, pořadí skupin i speciální tipy už
-              nelze měnit. Vyřazovací zápasy se tipují po kolech — každé kolo
-              do výkopu svého prvního zápasu.
+              {dateFormatter.format(groupDeadline)}): skupinové zápasy už nelze
+              měnit a tipy všech jsou zveřejněné. Vyřazovací zápasy se tipují po
+              kolech — každé kolo do své uzávěrky.
             </p>
           ) : (
             <p>
-              Skupinové zápasy, pořadí skupin i speciální tipy můžeš měnit do{" "}
-              <strong>{dateFormatter.format(tournament.deadline)}</strong>{" "}
-              (výkop úvodního zápasu). Vyřazovací zápasy se tipují až po
-              skupinách a každé kolo se uzavře výkopem svého prvního zápasu.
+              Skupinové zápasy můžeš měnit do{" "}
+              <strong>{dateFormatter.format(groupDeadline)}</strong>. Vyřazovací
+              zápasy se tipují až po skupinách a každé kolo má vlastní uzávěrku.
             </p>
           )}
         </div>
@@ -258,14 +253,14 @@ export default async function FormularPage() {
               Pořadí skupin
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {globalDeadlinePassed
+              {rankingsClosed
                 ? "Tvůj tip na pořadí skupin a krále střelců. Po uzávěrce už ho nelze měnit — vidíš ho jen pro kontrolu."
                 : "U každé skupiny vyber, kdo skončí na 1.–4. místě, a tipni jejího krále střelců. Každý tým můžeš v dané skupině zvolit jen jednou."}
             </p>
           </div>
           <GroupRankingsForm
             groups={rankingGroups}
-            disabled={globalDeadlinePassed}
+            disabled={rankingsClosed}
           />
         </section>
 
@@ -274,14 +269,14 @@ export default async function FormularPage() {
           <div className="mb-4">
             <h2 className="text-lg font-bold tracking-tight">Speciální tipy</h2>
             <p className="mt-1 text-sm text-slate-600">
-              {globalDeadlinePassed
+              {specialsClosed
                 ? "Tvoje speciální tipy (postupující, vítěz turnaje, král střelců). Po uzávěrce už je nelze měnit — vidíš je jen pro kontrolu."
                 : "Postupující do vyřazovacích kol, vítěz turnaje a král střelců celého turnaje. Pole můžeš nechat prázdná — uloží se jen vyplněná."}
             </p>
           </div>
           <SpecialTipsForm
             data={specialTipsData}
-            disabled={globalDeadlinePassed}
+            disabled={specialsClosed}
           />
         </section>
 
@@ -292,7 +287,7 @@ export default async function FormularPage() {
               Zápasy ve skupinách
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              {globalDeadlinePassed
+              {groupPhaseClosed
                 ? "Tvoje tipy na skóre 72 zápasů základní fáze. Po uzávěrce už je nelze měnit — vidíš je jen pro kontrolu."
                 : "Tipy na konkrétní skóre 72 zápasů základní fáze. Můžeš nechat prázdné — ty se neukládají."}
             </p>
@@ -308,8 +303,8 @@ export default async function FormularPage() {
                 Vyřazovací zápasy
               </h2>
               <p className="mt-1 text-sm text-slate-600">
-                Tipy na skóre konkrétních pávičkových zápasů. Každé kolo se
-                uzavře výkopem svého prvního zápasu.
+                Tipy na skóre konkrétních pávičkových zápasů. Každé kolo má
+                vlastní uzávěrku.
               </p>
             </div>
             <TipsForm sections={knockoutSections} />

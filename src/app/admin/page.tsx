@@ -10,6 +10,7 @@ import {
   Medal,
   Network,
   Scale,
+  Timer,
   Trophy,
 } from "lucide-react";
 
@@ -36,6 +37,7 @@ export default async function AdminPage() {
     activeGrantCount,
     knockoutPlayable,
     knockoutPlayed,
+    deadlineOverrideCount,
   ] = await Promise.all([
     db.match.count({ where: { stage: "GROUP" } }),
     db.match.count({
@@ -88,6 +90,7 @@ export default async function AdminPage() {
         awayScore: { not: null },
       },
     }),
+    db.deadlineOverride.count(),
   ]);
 
   const remaining = totalMatches - playedMatches;
@@ -243,6 +246,28 @@ export default async function AdminPage() {
                   : activeGrantCount < 5
                     ? "aktivní odkazy"
                     : "aktivních odkazů"}
+              </>
+            }
+          />
+
+          <AdminCard
+            href="/admin/uzaverky"
+            icon={<Timer className="size-5 text-orange-600" />}
+            title="Uzávěrky tipů"
+            summary={
+              <>
+                {deadlineOverrideCount === 0 ? (
+                  <span className="text-slate-500">vše automaticky (výkop)</span>
+                ) : (
+                  <>
+                    {deadlineOverrideCount}{" "}
+                    {deadlineOverrideCount === 1
+                      ? "ruční uzávěrka"
+                      : deadlineOverrideCount < 5
+                        ? "ruční uzávěrky"
+                        : "ručních uzávěrek"}
+                  </>
+                )}
               </>
             }
           />

@@ -267,6 +267,28 @@ model TipChangeLog {
 }
 
 // =============================================================================
+// Ruční uzávěrky (přebití automatiky)
+// =============================================================================
+
+/// Ruční přebití automatické uzávěrky tipů. Pokud řádek pro daný `scope`
+/// existuje, platí jeho `deadline` MÍSTO automatiky (výkop prvního zápasu
+/// fáze / globální deadline). Když řádek chybí, platí automatika.
+///
+/// `scope`:
+///   "STAGE:<Stage>"     — celé kolo (skupiny nebo jedno vyřazovací kolo)
+///   "MATCH:<Match.id>"  — jednotlivý zápas (přebíjí i uzávěrku kola)
+///   "GROUP_RANKINGS"    — tipy na pořadí skupin
+///   "SPECIALS"          — speciální tipy (postupující, vítěz, král střelců)
+///
+/// Priorita při rozhodnutí, jestli je zápas uzamčený:
+///   MATCH override > STAGE override > automatika.
+model DeadlineOverride {
+  scope     String   @id
+  deadline  DateTime
+  updatedAt DateTime @updatedAt
+}
+
+// =============================================================================
 // Dotipování přes speciální odkaz
 // =============================================================================
 

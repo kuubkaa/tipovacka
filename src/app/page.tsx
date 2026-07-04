@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { ArrowRight, CalendarClock } from "lucide-react";
 
 import { auth, signOut } from "@/auth";
-import { tournament, isDeadlinePassed } from "@/config/tournament";
+import { tournament } from "@/config/tournament";
+import { groupPhaseDeadline } from "@/lib/deadlines";
 
 const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
   day: "numeric",
@@ -15,7 +16,8 @@ const dateFormatter = new Intl.DateTimeFormat("cs-CZ", {
 });
 
 export default async function Home() {
-  const deadlinePassed = isDeadlinePassed();
+  const groupDeadline = await groupPhaseDeadline();
+  const deadlinePassed = new Date().getTime() >= groupDeadline.getTime();
   const session = await auth();
 
   // Po prvním přihlášení je jméno prázdné — vynutíme jeho doplnění.
@@ -126,13 +128,13 @@ export default async function Home() {
           <CalendarClock className="size-4 text-amber-300" />
           {deadlinePassed ? (
             <span>
-              Deadline pro tipy uzavřen ({dateFormatter.format(tournament.deadline)})
+              Deadline pro tipy uzavřen ({dateFormatter.format(groupDeadline)})
             </span>
           ) : (
             <span>
               Tipy můžeš vyplnit do{" "}
               <strong className="font-semibold text-white">
-                {dateFormatter.format(tournament.deadline)}
+                {dateFormatter.format(groupDeadline)}
               </strong>
             </span>
           )}

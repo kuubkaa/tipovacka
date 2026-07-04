@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 
 import { MatchCard } from "./match-card";
 import { SiteHeader } from "@/components/site-header";
-import { isDeadlinePassed, tournament } from "@/config/tournament";
+import { groupPhaseDeadline } from "@/lib/deadlines";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -62,7 +62,8 @@ export default async function TipyPage() {
   const session = await requireSession("/tipy");
   const currentUserId = session.user.id;
   const now = new Date();
-  const deadlinePassed = isDeadlinePassed(now);
+  const groupDeadline = await groupPhaseDeadline();
+  const deadlinePassed = now.getTime() >= groupDeadline.getTime();
 
   if (!deadlinePassed) {
     return (
@@ -88,7 +89,7 @@ export default async function TipyPage() {
             <p className="mt-4 text-xs text-slate-500">
               Uzávěrka:{" "}
               <strong>
-                {deadlineDateFormatter.format(tournament.deadline)}
+                {deadlineDateFormatter.format(groupDeadline)}
               </strong>
             </p>
           </div>

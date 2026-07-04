@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Lock } from "lucide-react";
 
 import { OverviewClient } from "@/components/overview-client";
-import { isDeadlinePassed, tournament } from "@/config/tournament";
+import { tournament } from "@/config/tournament";
+import { groupPhaseDeadline } from "@/lib/deadlines";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -38,9 +39,10 @@ export default async function PrehledPage() {
   const session = await requireSession("/leaderboard/prehled");
   const currentUserId = session.user.id;
   const now = new Date();
+  const groupDeadline = await groupPhaseDeadline();
 
   // Před uzávěrkou nikdo nevidí cizí tipy — celá matice je zamčená.
-  if (!isDeadlinePassed(now)) {
+  if (now.getTime() < groupDeadline.getTime()) {
     return (
       <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
         <header className="border-b border-slate-200 bg-white">
@@ -78,7 +80,7 @@ export default async function PrehledPage() {
             <p className="mt-4 text-xs text-slate-500">
               Uzávěrka:{" "}
               <strong>
-                {deadlineDateFormatter.format(tournament.deadline)}
+                {deadlineDateFormatter.format(groupDeadline)}
               </strong>
             </p>
           </div>

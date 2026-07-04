@@ -8,6 +8,10 @@ import { auth } from "@/auth";
 import { APP_URL, getAppOrigin } from "@/lib/app-url";
 import { tournament } from "@/config/tournament";
 import { db } from "@/lib/db";
+import {
+  isValidDeadlineScope,
+  matchScope,
+} from "@/lib/deadlines";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { isValidEmail, sendMail } from "@/lib/mailer";
 import { pragueLocalToUtc } from "@/lib/prague-time";
@@ -977,6 +981,90 @@ export async function revokeTipEditGrantAction(
     return { status: "ok" };
   } catch (err) {
     console.error("[revokeTipEditGrantAction]", err);
+    return { status: "error", message: ADMIN_SAVE_ERROR };
+  }
+}
+
+// =============================================================================
+// Ruční uzávěrky (přebití automatiky)
+// =============================================================================
+
+export type SetDeadlineOverrideResult =
+  | { status: "ok" }
+  | { status: "bad-scope" }
+  | { status: "bad-value" }
+  | { status: "unauth" }
+  | { status: "forbidden" }
+  | { status: "error"; message: string };
+
+/** Po změně uzávěrky přegeneruj stránky, které z ní čtou. */
+function revalidateDeadlinePaths() {
+  revalidatePath("/admin/uzaverky");
+  revalidatePath("/admin");
+  revalidatePath("/formular");
+  revalidatePath("/tipy");
+  revalidatePath("/leaderboard/prehled");
+  revalidatePath("/");
+}
+
+/**
+ * Nastaví nebo zruší ruční uzávěrku pro daný rozsah (celé kolo, jeden zápas,
+ * pořadí skupin nebo speciály). Admin only.
+ *
+ * FormData:
+ *   scope = "STAGE:<Stage>" | "MATCH:<id>" | "GROUP_RANKINGS" | "SPECIALS"
+ *   op    = "set" (výchozí) | "now" | "clear"
+ *   value = pražský nástěnný čas z <input type="datetime-local"> (jen pro "set")
+ */
+export async function setDeadlineOverrideAction(
+  _prev: SetDeadlineOverrideResult | null,
+  formData: FormData
+): Promise<SetDeadlineOverrideResult> {
+  try {
+    const session = await requireAdminSession();
+    if (!session) return { status: "forbidden" };
+
+    const scope = (formData.get("scope") ?? "").toString().trim();
+    if (!isValidDeadlineScope(scope)) return { status: "bad-scope" };
+
+    const op = (formData.get("op") ?? "set").toString();
+
+    if (op === "clear") {
+      await db.deadlineOverride.deleteMany({ where: { scope } });
+      revalidateDeadlinePaths();
+      return { status: "ok" };
+    }
+
+    // Zápasový rozsah — ověř, že zápas existuje.
+    if (scope.startsWith("MATCH:")) {
+      const id = scope.slice("MATCH:".length);
+      const match = await db.match.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!match || matchScope(match.id) !== scope) return { status: "bad-scope" };
+    }
+
+    // op="now" → zavřít okamžitě (deadline = teď); op="set" → z pole datetime.
+    let deadline: Date | null;
+    if (op === "now") {
+      deadline = new Date();
+    } else {
+      const value = (formData.get("value") ?? "").toString().trim();
+      deadline = pragueLocalToUtc(value);
+    }
+    if (!deadline || isNaN(deadline.getTime())) return { status: "bad-value" };
+
+    await db.deadlineOverride.upsert({
+      where: { scope },
+      create: { scope, deadline },
+      update: { deadline },
+    });
+
+    revalidateDeadlinePaths();
+    return { status: "ok" };
+  } catch (err) {
+    console.error("[setDeadlineOverrideAction]", err);
     return { status: "error", message: ADMIN_SAVE_ERROR };
   }
 }
