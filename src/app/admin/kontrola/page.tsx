@@ -4,10 +4,15 @@ import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
-import { PAGE_WIDTH } from "@/lib/layout";
 import { cn } from "@/lib/utils";
 
 import { PaidToggle } from "./paid-toggle";
+
+// Tahle stránka je široká tabulka (skupiny + až 6 kol pavouka + pořadí +
+// speciály + postupující + stav + zaplaceno). Na PC ji roztahujeme přes celou
+// šířku obrazovky, aby se nemuselo scrollovat — proto vlastní width místo
+// sdíleného PAGE_WIDTH (max-w-6xl by tabulku ořízl a nutil rolovat).
+const WIDE_WIDTH = "max-w-3xl lg:max-w-none";
 
 const GROUP_LETTERS = [
   "A", "B", "C", "D", "E", "F",
@@ -192,7 +197,7 @@ export default async function AdminKontrolaPage() {
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className={`mx-auto flex w-full ${PAGE_WIDTH} items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4`}>
+        <div className={`mx-auto flex w-full ${WIDE_WIDTH} items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4`}>
           <div className="min-w-0">
             <Link
               href="/admin"
@@ -213,7 +218,7 @@ export default async function AdminKontrolaPage() {
         </div>
       </header>
 
-      <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
+      <main className={`mx-auto w-full ${WIDE_WIDTH} flex-1 px-4 py-6 sm:px-6 sm:py-8`}>
         <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
           Přehled, kdo má vyplněno všechno. Zeleně = hotovo, oranžově = něco
           chybí, šedě = zatím nic.{" "}
