@@ -65,18 +65,20 @@ export default async function AdminUzaverkyPage() {
     label: string,
     autoDate: Date,
     effectiveDate: Date,
-    sub?: string
+    opts?: { sub?: string; supportsKickoffMode?: boolean }
   ): DeadlineUnit => {
-    const override = ctx.overrides.get(scope) ?? null;
+    const override = ctx.overrides.get(scope);
     return {
       scope,
       label,
-      sub,
+      sub: opts?.sub,
       autoLocal: utcToPragueLocal(autoDate),
       autoText: fullFormatter.format(autoDate),
-      overrideLocal: override ? utcToPragueLocal(override) : null,
+      overrideLocal: override?.deadline ? utcToPragueLocal(override.deadline) : null,
       effectiveText: fullFormatter.format(effectiveDate),
-      hasOverride: override !== null,
+      hasOverride: override != null,
+      mode: override?.mode ?? "FIXED",
+      supportsKickoffMode: opts?.supportsKickoffMode,
     };
   };
 
@@ -87,6 +89,15 @@ export default async function AdminUzaverkyPage() {
     return m.matchKey;
   };
 
+  /** Zápasová jednotka — fallback (bez override zápasu) = výkop v režimu KICKOFF, jinak uzávěrka kola. */
+  const matchUnit = (m: (typeof matches)[number], label: string): DeadlineUnit => {
+    const fallback =
+      ctx.stageMode(m.stage) === "KICKOFF" ? m.dateUtc : ctx.stageDeadline(m.stage);
+    return unit(matchScope(m.id), label, fallback, ctx.matchDeadline(m), {
+      sub: shortFormatter.format(m.dateUtc),
+    });
+  };
+
   // --- Skupinová fáze ---
   const groupMatches = matches.filter((m) => m.stage === "GROUP");
   const groupMatchesUnit = unit(
@@ -94,16 +105,10 @@ export default async function AdminUzaverkyPage() {
     "Skupinové zápasy",
     ctx.stageAutoDeadline("GROUP"),
     ctx.stageDeadline("GROUP"),
-    `${groupMatches.length} zápasů`
+    { sub: `${groupMatches.length} zápasů`, supportsKickoffMode: true }
   );
   groupMatchesUnit.matches = groupMatches.map((m) =>
-    unit(
-      matchScope(m.id),
-      `${m.group ? `Sk. ${m.group} · ` : ""}${matchLabel(m)}`,
-      ctx.stageDeadline("GROUP"),
-      ctx.matchDeadline(m),
-      shortFormatter.format(m.dateUtc)
-    )
+    matchUnit(m, `${m.group ? `Sk. ${m.group} · ` : ""}${matchLabel(m)}`)
   );
   const groupSection: DeadlineSection = {
     title: "Skupinová fáze",
@@ -120,7 +125,7 @@ export default async function AdminUzaverkyPage() {
         "Speciální tipy",
         tournament.deadline,
         ctx.specialsDeadline(),
-        "Postupující, vítěz turnaje, král střelců"
+        { sub: "Postupující, vítěz turnaje, král střelců" }
       ),
     ],
   };
@@ -138,17 +143,9 @@ export default async function AdminUzaverkyPage() {
       `${label} — celé kolo`,
       ctx.stageAutoDeadline(stage),
       ctx.stageDeadline(stage),
-      `${stageMatches.length} zápasů`
+      { sub: `${stageMatches.length} zápasů`, supportsKickoffMode: true }
     );
-    roundUnit.matches = stageMatches.map((m) =>
-      unit(
-        matchScope(m.id),
-        matchLabel(m),
-        ctx.stageDeadline(stage),
-        ctx.matchDeadline(m),
-        shortFormatter.format(m.dateUtc)
-      )
-    );
+    roundUnit.matches = stageMatches.map((m) => matchUnit(m, matchLabel(m)));
     return { title: label, units: [roundUnit] };
   });
 
@@ -183,9 +180,10 @@ export default async function AdminUzaverkyPage() {
             hodnotou, stačí ji upravit a uložit.
           </p>
           <p className="mt-2 text-slate-500">
-            Ruční uzávěrka zápasu má přednost před uzávěrkou kola. Uzavření
-            skupinové fáze zároveň <strong>zveřejní tipy všech</strong> (jako
-            automatický start turnaje).
+            U celého kola můžeš volit režim: <strong>Celé kolo v jeden termín</strong>{" "}
+            (jeden společný deadline), nebo <strong>Každý zápas do výkopu</strong>{" "}
+            (každý zápas se uzavře — a u skupin i odhalí cizí tipy — svým vlastním
+            výkopem). Ruční uzávěrka jednotlivého zápasu má přednost před kolem.
           </p>
         </div>
 

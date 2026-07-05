@@ -280,12 +280,18 @@ model TipChangeLog {
 ///   "GROUP_RANKINGS"    — tipy na pořadí skupin
 ///   "SPECIALS"          — speciální tipy (postupující, vítěz, král střelců)
 ///
+/// `mode` (jen pro STAGE scope):
+///   "FIXED"   — celé kolo se uzavře v jeden termín (`deadline`, nebo automatika).
+///   "KICKOFF" — každý zápas kola se uzavře (a u skupin i odhalí) svým výkopem;
+///               `deadline` se ignoruje (null).
+///
 /// Priorita při rozhodnutí, jestli je zápas uzamčený:
-///   MATCH override > STAGE override > automatika.
+///   MATCH override > STAGE (FIXED deadline / KICKOFF výkop) > automatika.
 model DeadlineOverride {
-  scope     String   @id
-  deadline  DateTime
-  updatedAt DateTime @updatedAt
+  scope     String    @id
+  mode      String    @default("FIXED")
+  deadline  DateTime?
+  updatedAt DateTime  @updatedAt
 }
 
 // =============================================================================

@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 
 import { OverviewClient } from "@/components/overview-client";
 import { tournament } from "@/config/tournament";
-import { groupPhaseDeadline } from "@/lib/deadlines";
+import { loadDeadlineContext } from "@/lib/deadlines";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -39,55 +39,55 @@ export default async function PrehledPage() {
   const session = await requireSession("/leaderboard/prehled");
   const currentUserId = session.user.id;
   const now = new Date();
-  const groupDeadline = await groupPhaseDeadline();
+  const deadlines = await loadDeadlineContext();
+  const rankingsRevealed = deadlines.rankingsClosed(now);
+  const specialsRevealed = deadlines.specialsClosed(now);
 
-  // Před uzávěrkou nikdo nevidí cizí tipy — celá matice je zamčená.
-  if (now.getTime() < groupDeadline.getTime()) {
-    return (
-      <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-            <div>
-              <Link
-                href="/leaderboard"
-                className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
-              >
-                ← Pořadí
-              </Link>
-              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-                Kompletní přehled tipů
-              </h1>
-            </div>
+  // Zámek matice, dokud není odhalené vůbec nic (žádný zápas ani kategorie).
+  const lockedView = (nextReveal: Date | null) => (
+    <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <div>
+            <Link
+              href="/leaderboard"
+              className="text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700"
+            >
+              ← Pořadí
+            </Link>
+            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+              Kompletní přehled tipů
+            </h1>
           </div>
-        </header>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-            <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-              <Lock className="size-5" />
-            </div>
-            <h2 className="text-lg font-semibold">Přehled je zamčený</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
-              Po startu turnaje a uzávěrce tipů se tu zobrazí kompletní přehled
-              tipů všech. Do té doby vidíš jen své vlastní ve{" "}
-              <Link
-                href="/formular"
-                className="font-medium text-slate-900 underline-offset-4 hover:underline"
-              >
-                formuláři
-              </Link>
-              .
-            </p>
+        </div>
+      </header>
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+          <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            <Lock className="size-5" />
+          </div>
+          <h2 className="text-lg font-semibold">Přehled je zamčený</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
+            Jakmile se první tipy uzavřou, zobrazí se tu kompletní přehled tipů
+            všech. Do té doby vidíš jen své vlastní ve{" "}
+            <Link
+              href="/formular"
+              className="font-medium text-slate-900 underline-offset-4 hover:underline"
+            >
+              formuláři
+            </Link>
+            .
+          </p>
+          {nextReveal && (
             <p className="mt-4 text-xs text-slate-500">
-              Uzávěrka:{" "}
-              <strong>
-                {deadlineDateFormatter.format(groupDeadline)}
-              </strong>
+              První uzávěrka:{" "}
+              <strong>{deadlineDateFormatter.format(nextReveal)}</strong>
             </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+          )}
+        </div>
+      </main>
+    </div>
+  );
 
   const [
     users,
@@ -205,8 +205,9 @@ export default async function PrehledPage() {
 
   const columns: Column[] = [];
 
-  // --- Zápasy ---
+  // --- Zápasy (odhalí se po uzamčení daného zápasu) ---
   for (const m of matches) {
+    if (!deadlines.matchLocked(m, now)) continue;
     const homeCode = m.homeTeam?.code ?? "?";
     const awayCode = m.awayTeam?.code ?? "?";
     const realScore =
@@ -230,7 +231,7 @@ export default async function PrehledPage() {
     });
   }
 
-  // --- Vyřazovací zápasy (odhalí se po výkopu prvního zápasu kola) ---
+  // --- Vyřazovací zápasy (každý se odhalí po svém uzamčení) ---
   const koByStage = new Map<string, typeof knockoutMatches>();
   for (const m of knockoutMatches) {
     if (!m.homeTeam || !m.awayTeam) continue;
@@ -238,19 +239,15 @@ export default async function PrehledPage() {
     list.push(m);
     koByStage.set(m.stage, list);
   }
-  const nowMs = now.getTime();
-  const revealedKoStages = Array.from(koByStage.entries())
-    .filter(
-      ([, ms]) => nowMs >= Math.min(...ms.map((m) => m.dateUtc.getTime()))
-    )
-    .sort(
-      ([a], [b]) =>
-        (KNOCKOUT_MATCH_STAGES[a]?.idx ?? 99) -
-        (KNOCKOUT_MATCH_STAGES[b]?.idx ?? 99)
-    );
-  for (const [stage, ms] of revealedKoStages) {
+  const orderedKoStages = Array.from(koByStage.entries()).sort(
+    ([a], [b]) =>
+      (KNOCKOUT_MATCH_STAGES[a]?.idx ?? 99) -
+      (KNOCKOUT_MATCH_STAGES[b]?.idx ?? 99)
+  );
+  for (const [stage, ms] of orderedKoStages) {
     const label = KNOCKOUT_MATCH_STAGES[stage]?.label ?? stage;
     for (const m of ms) {
+      if (!deadlines.matchLocked(m, now)) continue;
       const homeCode = m.homeTeam?.code ?? "?";
       const awayCode = m.awayTeam?.code ?? "?";
       const realScore =
@@ -276,6 +273,7 @@ export default async function PrehledPage() {
   }
 
   // --- Pořadí skupin (4 pozice komprimované do 1 buňky) ---
+  if (rankingsRevealed)
   for (const g of groupLetters) {
     const real = groupRankingResultMap.get(g) ?? null;
     columns.push({
@@ -293,6 +291,7 @@ export default async function PrehledPage() {
   }
 
   // --- Králové střelců skupin ---
+  if (rankingsRevealed)
   for (const g of groupLetters) {
     const realValue = tournamentResultMap.get(`TOP_SCORER_GROUP_${g}`) ?? null;
     columns.push({
@@ -310,6 +309,7 @@ export default async function PrehledPage() {
   }
 
   // --- Postupy ---
+  if (specialsRevealed)
   for (const round of KNOCKOUT_ADVANCERS_ROUNDS) {
     const real = knockoutResultMap.get(round.stage) ?? null;
     const pointsPerTeam =
@@ -335,7 +335,7 @@ export default async function PrehledPage() {
   }
 
   // --- Vítěz turnaje ---
-  {
+  if (specialsRevealed) {
     const real = tournamentResultMap.get("TOURNAMENT_WINNER") ?? null;
     columns.push({
       key: "winner",
@@ -352,7 +352,7 @@ export default async function PrehledPage() {
   }
 
   // --- Král střelců turnaje ---
-  {
+  if (specialsRevealed) {
     const real = tournamentResultMap.get("TOP_SCORER_TOURNAMENT") ?? null;
     columns.push({
       key: "topscorer",
@@ -370,6 +370,16 @@ export default async function PrehledPage() {
         return { text: tip, points };
       },
     });
+  }
+
+  // Dokud není odhalený žádný sloupec, ukaž zámek.
+  if (columns.length === 0) {
+    const nextReveal = matches.length
+      ? new Date(
+          Math.min(...matches.map((m) => deadlines.matchDeadline(m).getTime()))
+        )
+      : null;
+    return lockedView(nextReveal);
   }
 
   // Počet event sloupců na jednu tiskovou stránku.

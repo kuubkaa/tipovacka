@@ -84,6 +84,7 @@ export default async function FormularPage() {
   const rankingsClosed = deadlines.rankingsClosed(now);
   const specialsClosed = deadlines.specialsClosed(now);
   const groupDeadline = deadlines.stageDeadline("GROUP");
+  const groupKickoffMode = deadlines.stageMode("GROUP") === "KICKOFF";
 
   // --- Skupinové zápasy → sekce „Skupina A..L" ---
   const groupMatchSections = new Map<string, typeof matches>();
@@ -236,6 +237,12 @@ export default async function FormularPage() {
               {dateFormatter.format(groupDeadline)}): skupinové zápasy už nelze
               měnit a tipy všech jsou zveřejněné. Vyřazovací zápasy se tipují po
               kolech — každé kolo do své uzávěrky.
+            </p>
+          ) : groupKickoffMode ? (
+            <p>
+              Každý skupinový zápas můžeš tipovat <strong>do jeho výkopu</strong>{" "}
+              — v ten okamžik se uzamkne a odhalí se cizí tipy. Vyřazovací zápasy
+              se tipují až po skupinách.
             </p>
           ) : (
             <p>

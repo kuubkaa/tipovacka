@@ -11,6 +11,7 @@ import { db } from "@/lib/db";
 import {
   isValidDeadlineScope,
   matchScope,
+  scopeSupportsKickoffMode,
 } from "@/lib/deadlines";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { isValidEmail, sendMail } from "@/lib/mailer";
@@ -1013,8 +1014,10 @@ function revalidateDeadlinePaths() {
  *
  * FormData:
  *   scope = "STAGE:<Stage>" | "MATCH:<id>" | "GROUP_RANKINGS" | "SPECIALS"
- *   op    = "set" (výchozí) | "now" | "clear"
+ *   op    = "set" (výchozí) | "now" | "clear" | "kickoff"
  *   value = pražský nástěnný čas z <input type="datetime-local"> (jen pro "set")
+ *
+ * "kickoff" (jen STAGE scope) přepne kolo do režimu „každý zápas do svého výkopu".
  */
 export async function setDeadlineOverrideAction(
   _prev: SetDeadlineOverrideResult | null,
@@ -1035,6 +1038,18 @@ export async function setDeadlineOverrideAction(
       return { status: "ok" };
     }
 
+    // Režim „každý zápas do svého výkopu" — jen pro celé kolo (STAGE scope).
+    if (op === "kickoff") {
+      if (!scopeSupportsKickoffMode(scope)) return { status: "bad-scope" };
+      await db.deadlineOverride.upsert({
+        where: { scope },
+        create: { scope, mode: "KICKOFF", deadline: null },
+        update: { mode: "KICKOFF", deadline: null },
+      });
+      revalidateDeadlinePaths();
+      return { status: "ok" };
+    }
+
     // Zápasový rozsah — ověř, že zápas existuje.
     if (scope.startsWith("MATCH:")) {
       const id = scope.slice("MATCH:".length);
@@ -1046,6 +1061,7 @@ export async function setDeadlineOverrideAction(
     }
 
     // op="now" → zavřít okamžitě (deadline = teď); op="set" → z pole datetime.
+    // Vždy FIXED (jeden společný termín kola / zápasu).
     let deadline: Date | null;
     if (op === "now") {
       deadline = new Date();
@@ -1057,8 +1073,8 @@ export async function setDeadlineOverrideAction(
 
     await db.deadlineOverride.upsert({
       where: { scope },
-      create: { scope, deadline },
-      update: { deadline },
+      create: { scope, mode: "FIXED", deadline },
+      update: { mode: "FIXED", deadline },
     });
 
     revalidateDeadlinePaths();

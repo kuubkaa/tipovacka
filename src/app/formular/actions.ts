@@ -97,9 +97,9 @@ async function saveTips(formData: FormData): Promise<SaveTipsResult> {
   const matchIds = updates.map((u) => u.matchId);
   const updatedMatches = await db.match.findMany({
     where: { id: { in: matchIds } },
-    select: { id: true, stage: true },
+    select: { id: true, stage: true, dateUtc: true },
   });
-  const stageByMatch = new Map(updatedMatches.map((m) => [m.id, m.stage]));
+  const matchById = new Map(updatedMatches.map((m) => [m.id, m]));
 
   // Uzávěrka každé fáze = výkop jejího prvního zápasu, POKUD ji admin ručně
   // nepřebil vlastním termínem (DeadlineOverride). Priorita: override zápasu >
@@ -115,11 +115,11 @@ async function saveTips(formData: FormData): Promise<SaveTipsResult> {
   let saved = 0;
   let lockedSkipped = 0;
   for (const u of updates) {
-    const stage = stageByMatch.get(u.matchId);
-    if (!stage) continue; // Neznámý zápas
+    const match = matchById.get(u.matchId);
+    if (!match) continue; // Neznámý zápas
 
-    // Uzávěrka zápasu = ruční override zápasu ?? override kola ?? výkop.
-    if (deadlines.matchLocked({ id: u.matchId, stage }, now)) {
+    // Uzávěrka zápasu = override zápasu ?? (kolo FIXED deadline / KICKOFF výkop) ?? automatika.
+    if (deadlines.matchLocked(match, now)) {
       lockedSkipped++;
       continue;
     }

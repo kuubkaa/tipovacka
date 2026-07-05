@@ -4,14 +4,20 @@
  * Uzávěrka se skládá ze dvou vrstev:
  *   1. Automatika — výkop prvního zápasu fáze (skupiny = globální
  *      `tournament.deadline`, každé vyřazovací kolo = `min(dateUtc)` jeho zápasů).
- *   2. Ruční přebití (`DeadlineOverride`) — admin v `/admin/uzaverky` nastaví
- *      vlastní datum a čas pro celé kolo, jednotlivý zápas nebo pořadí skupin /
- *      speciály. Když override existuje, platí MÍSTO automatiky.
+ *   2. Ruční přebití (`DeadlineOverride`) — admin v `/admin/uzaverky`.
  *
- * Priorita pro zápas: override zápasu > override kola > automatika.
+ * Každé KOLO (STAGE scope) má režim:
+ *   - "FIXED"   — celé kolo se uzavře v jeden termín (ruční `deadline`, nebo
+ *                 automatika = výkop prvního zápasu).
+ *   - "KICKOFF" — každý zápas kola se uzavře (a u skupin i odhalí cizí tipy)
+ *                 svým vlastním výkopem.
  *
- * Uzávěrka skupinové fáze zároveň spouští zveřejnění cizích tipů (tipy/,
- * leaderboard/prehled). Proto reveal jede přes stejnou efektivní uzávěrku.
+ * Priorita pro zápas: override zápasu > STAGE (FIXED deadline / KICKOFF výkop) >
+ * automatika.
+ *
+ * Uzávěrka skupinové fáze zároveň spouští zveřejnění cizích tipů. V režimu
+ * KICKOFF se odhaluje po jednotlivých zápasech (tip se odhalí svým výkopem,
+ * v ten okamžik se i uzamkne).
  */
 import "server-only";
 
@@ -32,6 +38,8 @@ export const OVERRIDE_STAGES = [
 export const SCOPE_RANKINGS = "GROUP_RANKINGS";
 export const SCOPE_SPECIALS = "SPECIALS";
 
+export type DeadlineMode = "FIXED" | "KICKOFF";
+
 export function stageScope(stage: string): string {
   return `STAGE:${stage}`;
 }
@@ -49,61 +57,105 @@ export function isValidDeadlineScope(scope: string): boolean {
   return false;
 }
 
+/** Režim KICKOFF dává smysl jen pro celé kolo (STAGE scope). */
+export function scopeSupportsKickoffMode(scope: string): boolean {
+  return scope.startsWith("STAGE:");
+}
+
+interface OverrideRow {
+  mode: DeadlineMode;
+  deadline: Date | null;
+}
+
 // -----------------------------------------------------------------------------
 // Kontext (načte se jednou, spočítá všechny efektivní uzávěrky)
 // -----------------------------------------------------------------------------
 
+export interface MatchLike {
+  id: string;
+  stage: string;
+  dateUtc: Date;
+}
+
 export interface DeadlineContext {
-  /** Všechna ruční přebití (scope → deadline). */
-  overrides: Map<string, Date>;
+  /** Všechna ruční přebití (scope → {mode, deadline}). */
+  overrides: Map<string, OverrideRow>;
+  /** Režim daného kola ("FIXED", pokud není nastaven jinak). */
+  stageMode(stage: string): DeadlineMode;
   /** Automatická uzávěrka fáze (výkop prvního zápasu / globální deadline). */
   stageAutoDeadline(stage: string): Date;
-  /** Efektivní uzávěrka celého kola (override kola ?? automatika). */
+  /** Efektivní uzávěrka celého kola (v režimu KICKOFF = výkop posledního zápasu). */
   stageDeadline(stage: string): Date;
-  /** Efektivní uzávěrka jednoho zápasu (override zápasu ?? override kola ?? automatika). */
-  matchDeadline(match: { id: string; stage: string }): Date;
+  /** Efektivní uzávěrka jednoho zápasu. */
+  matchDeadline(match: MatchLike): Date;
   rankingsDeadline(): Date;
   specialsDeadline(): Date;
-  /** Je zápas právě uzamčený? */
-  matchLocked(match: { id: string; stage: string }, now?: Date): boolean;
-  /** Je skupinová fáze uzavřená? (= zamčené skupinové zápasy + zveřejnění cizích tipů) */
+  /** Je zápas právě uzamčený (a tím i odhalený)? */
+  matchLocked(match: MatchLike, now?: Date): boolean;
+  /** Je skupinová fáze jako celek uzavřená? */
   groupPhaseClosed(now?: Date): boolean;
   rankingsClosed(now?: Date): boolean;
   specialsClosed(now?: Date): boolean;
 }
 
 export async function loadDeadlineContext(): Promise<DeadlineContext> {
-  const [overrideRows, stageMins] = await Promise.all([
+  const [overrideRows, stageAggs] = await Promise.all([
     db.deadlineOverride.findMany(),
-    db.match.groupBy({ by: ["stage"], _min: { dateUtc: true } }),
+    db.match.groupBy({
+      by: ["stage"],
+      _min: { dateUtc: true },
+      _max: { dateUtc: true },
+    }),
   ]);
 
-  const overrides = new Map(overrideRows.map((r) => [r.scope, r.deadline]));
-  const autoKickoff = new Map<string, Date>();
-  for (const s of stageMins) {
-    if (s._min.dateUtc) autoKickoff.set(s.stage, s._min.dateUtc);
+  const overrides = new Map<string, OverrideRow>(
+    overrideRows.map((r) => [
+      r.scope,
+      { mode: (r.mode as DeadlineMode) ?? "FIXED", deadline: r.deadline },
+    ])
+  );
+  const minKickoff = new Map<string, Date>();
+  const maxKickoff = new Map<string, Date>();
+  for (const s of stageAggs) {
+    if (s._min.dateUtc) minKickoff.set(s.stage, s._min.dateUtc);
+    if (s._max.dateUtc) maxKickoff.set(s.stage, s._max.dateUtc);
   }
 
   const stageAutoDeadline = (stage: string): Date =>
     stage === "GROUP"
       ? tournament.deadline
-      : autoKickoff.get(stage) ?? tournament.deadline;
+      : minKickoff.get(stage) ?? tournament.deadline;
 
-  const stageDeadline = (stage: string): Date =>
-    overrides.get(stageScope(stage)) ?? stageAutoDeadline(stage);
+  const stageMode = (stage: string): DeadlineMode =>
+    overrides.get(stageScope(stage))?.mode ?? "FIXED";
 
-  const matchDeadline = (match: { id: string; stage: string }): Date =>
-    overrides.get(matchScope(match.id)) ?? stageDeadline(match.stage);
+  const stageDeadline = (stage: string): Date => {
+    const row = overrides.get(stageScope(stage));
+    if (row?.mode === "KICKOFF") {
+      // Celé kolo je uzavřené, až začne jeho poslední zápas.
+      return maxKickoff.get(stage) ?? stageAutoDeadline(stage);
+    }
+    return row?.deadline ?? stageAutoDeadline(stage);
+  };
+
+  const matchDeadline = (match: MatchLike): Date => {
+    const mrow = overrides.get(matchScope(match.id));
+    if (mrow?.deadline) return mrow.deadline; // override zápasu je vždy FIXED
+    const srow = overrides.get(stageScope(match.stage));
+    if (srow?.mode === "KICKOFF") return match.dateUtc;
+    return srow?.deadline ?? stageAutoDeadline(match.stage);
+  };
 
   const rankingsDeadline = (): Date =>
-    overrides.get(SCOPE_RANKINGS) ?? tournament.deadline;
+    overrides.get(SCOPE_RANKINGS)?.deadline ?? tournament.deadline;
   const specialsDeadline = (): Date =>
-    overrides.get(SCOPE_SPECIALS) ?? tournament.deadline;
+    overrides.get(SCOPE_SPECIALS)?.deadline ?? tournament.deadline;
 
   const passed = (d: Date, now: Date) => now.getTime() >= d.getTime();
 
   return {
     overrides,
+    stageMode,
     stageAutoDeadline,
     stageDeadline,
     matchDeadline,
@@ -120,14 +172,22 @@ export async function loadDeadlineContext(): Promise<DeadlineContext> {
 // Lehké jednorázové dotazy (pro místa, kde stačí jeden údaj)
 // -----------------------------------------------------------------------------
 
-async function overrideFor(scope: string): Promise<Date | null> {
-  const row = await db.deadlineOverride.findUnique({ where: { scope } });
-  return row?.deadline ?? null;
-}
-
-/** Efektivní uzávěrka skupinové fáze (= i okamžik zveřejnění cizích tipů). */
+/**
+ * Efektivní uzávěrka skupinové fáze jako celku (= i „turnaj odstartoval").
+ * V režimu KICKOFF = výkop posledního skupinového zápasu.
+ */
 export async function groupPhaseDeadline(): Promise<Date> {
-  return (await overrideFor(stageScope("GROUP"))) ?? tournament.deadline;
+  const row = await db.deadlineOverride.findUnique({
+    where: { scope: stageScope("GROUP") },
+  });
+  if (row?.mode === "KICKOFF") {
+    const agg = await db.match.aggregate({
+      where: { stage: "GROUP" },
+      _max: { dateUtc: true },
+    });
+    return agg._max.dateUtc ?? tournament.deadline;
+  }
+  return row?.deadline ?? tournament.deadline;
 }
 
 /** Je skupinová fáze uzavřená? Nahrazuje původní `isDeadlinePassed()`. */
@@ -136,14 +196,20 @@ export async function isGroupPhaseClosed(now: Date = new Date()): Promise<boolea
 }
 
 export async function rankingsDeadline(): Promise<Date> {
-  return (await overrideFor(SCOPE_RANKINGS)) ?? tournament.deadline;
+  const row = await db.deadlineOverride.findUnique({
+    where: { scope: SCOPE_RANKINGS },
+  });
+  return row?.deadline ?? tournament.deadline;
 }
 export async function isRankingsClosed(now: Date = new Date()): Promise<boolean> {
   return now.getTime() >= (await rankingsDeadline()).getTime();
 }
 
 export async function specialsDeadline(): Promise<Date> {
-  return (await overrideFor(SCOPE_SPECIALS)) ?? tournament.deadline;
+  const row = await db.deadlineOverride.findUnique({
+    where: { scope: SCOPE_SPECIALS },
+  });
+  return row?.deadline ?? tournament.deadline;
 }
 export async function isSpecialsClosed(now: Date = new Date()): Promise<boolean> {
   return now.getTime() >= (await specialsDeadline()).getTime();

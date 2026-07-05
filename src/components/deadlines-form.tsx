@@ -26,6 +26,10 @@ export interface DeadlineUnit {
   /** Aktuálně platná (efektivní) uzávěrka lidsky. */
   effectiveText: string;
   hasOverride: boolean;
+  /** Aktuální režim kola (jen u jednotek s `supportsKickoffMode`). */
+  mode: "FIXED" | "KICKOFF";
+  /** Umožnit přepnutí na režim „každý zápas do svého výkopu" (celé kolo). */
+  supportsKickoffMode?: boolean;
   /** Jednotlivé zápasy pod touto jednotkou (schované pod rozklikem). */
   matches?: DeadlineUnit[];
 }
@@ -89,7 +93,9 @@ function DeadlineRow({
   const [error, setError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
 
-  function run(op: "set" | "now" | "clear") {
+  const kickoff = unit.mode === "KICKOFF";
+
+  function run(op: "set" | "now" | "clear" | "kickoff") {
     if (pending) return;
     setError(null);
     const fd = new FormData();
@@ -121,7 +127,11 @@ function DeadlineRow({
     <div
       className={cn(
         "rounded-xl border bg-white p-4",
-        unit.hasOverride ? "border-amber-300" : "border-slate-200"
+        kickoff
+          ? "border-indigo-300"
+          : unit.hasOverride
+            ? "border-amber-300"
+            : "border-slate-200"
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -135,7 +145,11 @@ function DeadlineRow({
             </p>
           )}
         </div>
-        {unit.hasOverride ? (
+        {kickoff ? (
+          <span className="shrink-0 rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-indigo-800">
+            Per zápas
+          </span>
+        ) : unit.hasOverride ? (
           <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
             Ručně
           </span>
@@ -146,59 +160,100 @@ function DeadlineRow({
         )}
       </div>
 
-      <p className="mt-1 text-xs text-slate-500">
-        Platí: <strong className="text-slate-700">{unit.effectiveText}</strong>
-        {unit.hasOverride && (
-          <span className="text-slate-400"> · automaticky: {unit.autoText}</span>
-        )}
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <input
-          type="datetime-local"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className={cn(inputClass, "w-auto min-w-[15rem] flex-1")}
-        />
-        <Button
-          type="button"
-          onClick={() => run("set")}
-          disabled={pending}
-          className="h-9 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
-        >
-          {pending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : justSaved ? (
-            <Check className="size-4" />
-          ) : (
-            "Uložit"
-          )}
-        </Button>
-        <button
-          type="button"
-          onClick={() => run("now")}
-          disabled={pending}
-          className="h-9 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
-        >
-          Zavřít teď
-        </button>
-        {unit.hasOverride && (
+      {/* Přepínač režimu (jen celé kolo) */}
+      {unit.supportsKickoffMode && (
+        <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium">
           <button
             type="button"
-            onClick={() => run("clear")}
+            onClick={() => kickoff && run("clear")}
             disabled={pending}
-            aria-label="Zrušit ruční uzávěrku (zpět na automatiku)"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900 disabled:opacity-50"
+            className={cn(
+              "rounded-md px-3 py-1.5 transition-colors disabled:opacity-50",
+              !kickoff ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+            )}
           >
-            <RotateCcw className="size-3.5" /> Automaticky
+            Celé kolo v jeden termín
           </button>
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={() => !kickoff && run("kickoff")}
+            disabled={pending}
+            className={cn(
+              "rounded-md px-3 py-1.5 transition-colors disabled:opacity-50",
+              kickoff ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500 hover:text-slate-800"
+            )}
+          >
+            Každý zápas do výkopu
+          </button>
+        </div>
+      )}
 
-      <p className="mt-2 text-[11px] text-slate-400">
-        Čas je v pražské zóně. „Uložit“ nastaví ruční uzávěrku, „Zavřít teď“
-        uzamkne okamžitě, „Automaticky“ ruční nastavení zruší.
-      </p>
+      {kickoff ? (
+        <p className="mt-3 text-xs text-slate-600">
+          Každý zápas tohoto kola se uzavře svým vlastním výkopem
+          {unit.scope === "STAGE:GROUP" && (
+            <> a v ten okamžik se u něj odhalí i cizí tipy</>
+          )}
+          . Celé kolo je uzavřené po výkopu posledního zápasu.
+        </p>
+      ) : (
+        <>
+          <p className="mt-2 text-xs text-slate-500">
+            Platí:{" "}
+            <strong className="text-slate-700">{unit.effectiveText}</strong>
+            {unit.hasOverride && (
+              <span className="text-slate-400"> · automaticky: {unit.autoText}</span>
+            )}
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              type="datetime-local"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className={cn(inputClass, "w-auto min-w-[15rem] flex-1")}
+            />
+            <Button
+              type="button"
+              onClick={() => run("set")}
+              disabled={pending}
+              className="h-9 rounded-lg bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-300"
+            >
+              {pending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : justSaved ? (
+                <Check className="size-4" />
+              ) : (
+                "Uložit"
+              )}
+            </Button>
+            <button
+              type="button"
+              onClick={() => run("now")}
+              disabled={pending}
+              className="h-9 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
+            >
+              Zavřít teď
+            </button>
+            {unit.hasOverride && (
+              <button
+                type="button"
+                onClick={() => run("clear")}
+                disabled={pending}
+                aria-label="Zrušit ruční uzávěrku (zpět na automatiku)"
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900 disabled:opacity-50"
+              >
+                <RotateCcw className="size-3.5" /> Automaticky
+              </button>
+            )}
+          </div>
+
+          <p className="mt-2 text-[11px] text-slate-400">
+            Čas je v pražské zóně. „Uložit“ nastaví ruční uzávěrku, „Zavřít teď“
+            uzamkne okamžitě, „Automaticky“ ruční nastavení zruší.
+          </p>
+        </>
+      )}
 
       {error && <p className="mt-2 text-sm text-rose-700">{error}</p>}
     </div>

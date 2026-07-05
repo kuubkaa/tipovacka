@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 
 import { MatchCard } from "./match-card";
 import { SiteHeader } from "@/components/site-header";
-import { groupPhaseDeadline } from "@/lib/deadlines";
+import { loadDeadlineContext } from "@/lib/deadlines";
 import { requireSession } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
 import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
@@ -62,41 +62,6 @@ export default async function TipyPage() {
   const session = await requireSession("/tipy");
   const currentUserId = session.user.id;
   const now = new Date();
-  const groupDeadline = await groupPhaseDeadline();
-  const deadlinePassed = now.getTime() >= groupDeadline.getTime();
-
-  if (!deadlinePassed) {
-    return (
-      <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
-        <SiteHeader active="tipy-vsech" />
-        <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-12 sm:px-6`}>
-          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
-            <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-              <Lock className="size-5" />
-            </div>
-            <h2 className="text-lg font-semibold">Tipy jsou zamčené</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
-              Po startu turnaje a uzávěrce tipů uvidíš tipy všech ostatních.
-              Do té doby vidíš jen své vlastní v{" "}
-              <Link
-                href="/formular"
-                className="font-medium text-slate-900 underline-offset-4 hover:underline"
-              >
-                formuláři
-              </Link>
-              .
-            </p>
-            <p className="mt-4 text-xs text-slate-500">
-              Uzávěrka:{" "}
-              <strong>
-                {deadlineDateFormatter.format(groupDeadline)}
-              </strong>
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   // Načti všechno potřebné paralelně
   const [
@@ -162,6 +127,16 @@ export default async function TipyPage() {
   );
   const teamByCode = new Map(teams.map((t) => [t.code, t]));
 
+  // Odhalení cizích tipů = uzamčení. Zápas se odhalí, jakmile je uzamčený
+  // (podle režimu kola: společný termín, nebo výkop daného zápasu). Pořadí
+  // skupin a speciály mají vlastní uzávěrku.
+  const deadlines = await loadDeadlineContext();
+  const rankingsRevealed = deadlines.rankingsClosed(now);
+  const specialsRevealed = deadlines.specialsClosed(now);
+  const revealedGroupMatches = matches.filter((m) =>
+    deadlines.matchLocked(m, now)
+  );
+
   // Indexy. Prisma enumy zde caste-uju na string, ať můžu jako klíč
   // používat běžné string proměnné (GroupName/Stage je TS jen narrow string union).
   const tipsByMatch = groupBy(matchTips, (t) => t.matchId);
@@ -183,14 +158,12 @@ export default async function TipyPage() {
 
   // Zápasy zobrazujeme chronologicky podle výkopu (orderBy v dotazu),
   // seskupené po dnech jen pro přehledné nadpisy.
-  const matchDays = groupByPreservingOrder(matches, (m) =>
+  const matchDays = groupByPreservingOrder(revealedGroupMatches, (m) =>
     dayKeyFormatter.format(new Date(m.dateUtc))
   );
 
-  // --- Vyřazovací zápasy: seskup po kolech, odhal kolo až po výkopu jeho
-  // prvního zápasu (stejný zámek jako ve formuláři). Tipy na skóre už máme
-  // v `tipsByMatch` (dotaz na Tip není omezený na skupiny).
-  const nowMs = now.getTime();
+  // --- Vyřazovací zápasy: seskup po kolech, odhal každý zápas, jakmile je
+  // uzamčený (podle režimu kola). Tipy na skóre už máme v `tipsByMatch`.
   const knockoutByStage = new Map<string, typeof knockoutMatches>();
   for (const m of knockoutMatches) {
     if (!m.homeTeam || !m.awayTeam) continue;
@@ -203,10 +176,9 @@ export default async function TipyPage() {
       stage,
       label: KNOCKOUT_ORDER[stage]?.label ?? stage,
       idx: KNOCKOUT_ORDER[stage]?.idx ?? 99,
-      matches: ms,
-      firstKickoffMs: Math.min(...ms.map((m) => m.dateUtc.getTime())),
+      matches: ms.filter((m) => deadlines.matchLocked(m, now)),
     }))
-    .filter((r) => nowMs >= r.firstKickoffMs)
+    .filter((r) => r.matches.length > 0)
     .sort((a, b) => a.idx - b.idx);
   const hasRevealedKnockout = revealedKnockoutRounds.length > 0;
 
@@ -220,13 +192,60 @@ export default async function TipyPage() {
     )
   ).sort();
 
+  // Dokud není odhalené vůbec nic, ukaž zámek.
+  const anythingRevealed =
+    revealedGroupMatches.length > 0 ||
+    hasRevealedKnockout ||
+    rankingsRevealed ||
+    specialsRevealed;
+
+  if (!anythingRevealed) {
+    const nextReveal = matches.length
+      ? new Date(
+          Math.min(...matches.map((m) => deadlines.matchDeadline(m).getTime()))
+        )
+      : null;
+    return (
+      <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
+        <SiteHeader active="tipy-vsech" />
+        <main className={`mx-auto w-full ${PAGE_WIDTH} flex-1 px-4 py-12 sm:px-6`}>
+          <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <Lock className="size-5" />
+            </div>
+            <h2 className="text-lg font-semibold">Tipy jsou zamčené</h2>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-slate-600">
+              Jakmile se první tipy uzavřou, uvidíš tady tipy všech ostatních.
+              Do té doby vidíš jen své vlastní ve{" "}
+              <Link
+                href="/formular"
+                className="font-medium text-slate-900 underline-offset-4 hover:underline"
+              >
+                formuláři
+              </Link>
+              .
+            </p>
+            {nextReveal && (
+              <p className="mt-4 text-xs text-slate-500">
+                První uzávěrka:{" "}
+                <strong>{deadlineDateFormatter.format(nextReveal)}</strong>
+              </p>
+            )}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-1 flex-col bg-slate-50 text-slate-900">
       <SiteHeader active="tipy-vsech">
         <div className={`mx-auto flex w-full ${PAGE_WIDTH} gap-4 overflow-x-auto px-4 py-2 text-sm whitespace-nowrap sm:px-6`}>
-          <a href="#zapasy" className="text-slate-600 hover:text-slate-900">
-            Zápasy
-          </a>
+          {revealedGroupMatches.length > 0 && (
+            <a href="#zapasy" className="text-slate-600 hover:text-slate-900">
+              Zápasy
+            </a>
+          )}
           {hasRevealedKnockout && (
             <a
               href="#vyrazovaci"
@@ -235,15 +254,21 @@ export default async function TipyPage() {
               Vyřazovací
             </a>
           )}
-          <a href="#skupiny" className="text-slate-600 hover:text-slate-900">
-            Pořadí skupin
-          </a>
-          <a href="#postupy" className="text-slate-600 hover:text-slate-900">
-            Postupy
-          </a>
-          <a href="#specialni" className="text-slate-600 hover:text-slate-900">
-            Speciální
-          </a>
+          {rankingsRevealed && (
+            <a href="#skupiny" className="text-slate-600 hover:text-slate-900">
+              Pořadí skupin
+            </a>
+          )}
+          {specialsRevealed && (
+            <>
+              <a href="#postupy" className="text-slate-600 hover:text-slate-900">
+                Postupy
+              </a>
+              <a href="#specialni" className="text-slate-600 hover:text-slate-900">
+                Speciální
+              </a>
+            </>
+          )}
         </div>
       </SiteHeader>
 
@@ -252,6 +277,7 @@ export default async function TipyPage() {
           Tipy všech
         </h1>
         {/* =================== Zápasy =================== */}
+        {revealedGroupMatches.length > 0 && (
         <section id="zapasy" className="scroll-mt-32">
           <h2 className="mb-3 text-lg font-bold tracking-tight">Zápasy</h2>
           <div className="space-y-10">
@@ -298,6 +324,7 @@ export default async function TipyPage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* =================== Vyřazovací zápasy =================== */}
         {hasRevealedKnockout && (
@@ -352,6 +379,7 @@ export default async function TipyPage() {
         )}
 
         {/* =================== Pořadí skupin =================== */}
+        {rankingsRevealed && (
         <section id="skupiny" className="mt-16 scroll-mt-32">
           <h2 className="mb-3 text-lg font-bold tracking-tight">
             Pořadí skupin
@@ -393,7 +421,10 @@ export default async function TipyPage() {
             })}
           </div>
         </section>
+        )}
 
+        {specialsRevealed && (
+        <>
         {/* =================== Postupující =================== */}
         <section id="postupy" className="mt-16 scroll-mt-32">
           <h2 className="mb-3 text-lg font-bold tracking-tight">Postupy</h2>
@@ -469,6 +500,8 @@ export default async function TipyPage() {
             />
           </div>
         </section>
+        </>
+        )}
       </main>
     </div>
   );
