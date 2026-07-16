@@ -7,15 +7,12 @@ import {
 import { tournament } from "@/config/tournament";
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { PAGE_WIDTH } from "@/lib/layout";
 
-const STAGE_TO_KEY: Record<string, string> = {
-  ROUND_OF_32: "R32",
-  ROUND_OF_16: "R16",
-  QUARTER_FINAL: "QF",
-  SEMI_FINAL: "SF",
-  FINAL: "F",
-};
+const STAGE_TO_KEY: Record<string, string> = Object.fromEntries(
+  KNOCKOUT_ADVANCERS_ROUNDS.map((r) => [r.stage, r.key])
+);
 
 export default async function AdminAdvancersPage() {
   const session = await requireAdmin("/admin/postupujici");
