@@ -16,6 +16,7 @@ import {
 
 import { requireAdmin } from "@/lib/auth-guards";
 import { db } from "@/lib/db";
+import { KNOCKOUT_ADVANCERS_ROUNDS } from "@/lib/knockout-rounds";
 import { PAGE_WIDTH } from "@/lib/layout";
 import { tournament } from "@/config/tournament";
 
@@ -167,7 +168,7 @@ export default async function AdminPage() {
             href="/admin/postupujici"
             icon={<Network className="size-5 text-indigo-600" />}
             title="Postupující kola"
-            summary={<>{knockoutResultsCount} / 5 kol vyplněno</>}
+            summary={<>{knockoutResultsCount} / {KNOCKOUT_ADVANCERS_ROUNDS.length} kol vyplněno</>}
           />
 
           <AdminCard
